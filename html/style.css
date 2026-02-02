@@ -14,20 +14,15 @@
 }
 
 body.dark {
-    --bg: #111827;
-    --card-bg: #1f2937;
-    --text: #f3f4f6;
-    --text-muted: #9ca3af;
-    --border: #374151;
-    --danger: #ef4444; 
+    --bg: #111827; --card-bg: #1f2937; --text: #f3f4f6;
+    --text-muted: #9ca3af; --border: #374151; --danger: #ef4444; 
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background-color: var(--bg);
-    color: var(--text);
+    background-color: var(--bg); color: var(--text);
     transition: background-color 0.3s, color 0.3s;
     padding: 20px;
 }
@@ -36,10 +31,15 @@ body {
 .icon { width: 24px; height: 24px; }
 
 /* =========================================
-   2. LAYOUT & HEADER
+   2. LAYOUT (FULL WIDTH FIX)
    ========================================= */
 .container {
-    max-width: 800px; margin: 0 auto; padding-bottom: 50px; position: relative;
+    /* Fast volle Breite auf Desktop */
+    width: 95%; 
+    max-width: 1600px; 
+    margin: 0 auto; 
+    padding-bottom: 50px; 
+    position: relative;
 }
 
 .header-tools { position: absolute; top: 0; right: 0; z-index: 100; }
@@ -51,7 +51,6 @@ body {
 .icon-btn:hover { background-color: rgba(0,0,0,0.1); }
 body.dark .icon-btn:hover { background-color: rgba(255,255,255,0.1); }
 
-/* Connection Banner */
 #connectionBanner {
     position: fixed; top: 0; left: 0; width: 100%;
     background-color: var(--danger); color: white;
@@ -62,7 +61,7 @@ body.dark .icon-btn:hover { background-color: rgba(255,255,255,0.1); }
 #connectionBanner.visible { transform: translateY(0); }
 
 /* =========================================
-   3. MODE SWITCH (PERFECT CENTER FIX)
+   3. MODE SWITCH
    ========================================= */
 .mode-switch-container {
     display: flex; justify-content: center;
@@ -71,7 +70,7 @@ body.dark .icon-btn:hover { background-color: rgba(255,255,255,0.1); }
 
 .toggle-switch {
     position: relative; display: inline-block;
-    width: 260px; height: 44px; /* Breite etwas erhöht für Text */
+    width: 260px; height: 46px; 
 }
 .toggle-switch input { opacity: 0; width: 0; height: 0; }
 
@@ -79,39 +78,30 @@ body.dark .icon-btn:hover { background-color: rgba(255,255,255,0.1); }
     position: absolute; cursor: pointer;
     top: 0; left: 0; right: 0; bottom: 0;
     background-color: var(--border);
-    transition: .4s; border-radius: 8px;
-    padding: 4px; /* Exaktes Padding rundherum */
+    transition: .4s; border-radius: 10px;
 }
 
-/* Der weiße Schieber (Pill) */
 .slider:before {
     position: absolute; content: "";
-    /* Höhe = Container (44) - PaddingTop(4) - PaddingBottom(4) = 36 */
-    height: 36px; 
-    /* Breite = 50% des Containers minus Padding (4px) minus kleiner Spalt (2px) */
-    width: calc(50% - 6px);
-    left: 4px; bottom: 4px;
+    height: 38px; width: calc(50% - 8px); 
+    left: 4px; top: 4px;
     background-color: var(--card-bg);
-    transition: left 0.4s cubic-bezier(0.4, 0.0, 0.2, 1);
-    border-radius: 6px;
+    transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+    border-radius: 8px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     z-index: 1;
 }
 
-/* Wenn Checked: Schiebe nach rechts auf die exakte Spiegelposition */
-input:checked + .slider:before {
-    left: calc(50% + 2px);
-}
+input:checked + .slider:before { transform: translateX(130px); }
 
 .slider-labels {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    display: flex; pointer-events: none; z-index: 2;
+    display: flex; z-index: 2; pointer-events: none;
 }
 
 .label-text {
-    flex: 1; /* Nimmt exakt 50% Platz ein */
-    display: flex; align-items: center; justify-content: center;
-    font-size: 0.9rem; font-weight: 600;
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    font-size: 0.95rem; font-weight: 600;
     color: var(--text-muted); transition: color 0.3s;
 }
 
@@ -121,29 +111,22 @@ input:checked + .slider .label-right { color: var(--text); }
 /* =========================================
    4. GLOBAL CONTROLS
    ========================================= */
-.global-controls-section {
-    text-align: center; margin-bottom: 2rem;
-}
+.global-controls-section { text-align: center; margin-bottom: 2rem; }
 
 .time-display {
     font-size: 5rem; line-height: 1;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    font-variant-numeric: tabular-nums; /* Verhindert Springen der Zahlen */
-    font-weight: 700;
-    cursor: default; 
+    font-variant-numeric: tabular-nums;
+    font-weight: 700; cursor: default; 
     display: inline-block;
     border-bottom: 3px dashed transparent;
-    padding-bottom: 5px;
-    transition: all 0.2s;
+    padding-bottom: 5px; transition: all 0.2s;
 }
-/* Nur bearbeitbar wenn Klasse .editable */
 .time-display.editable {
-    cursor: pointer;
-    border-bottom-color: var(--border);
+    cursor: pointer; border-bottom-color: rgba(156, 163, 175, 0.5);
 }
 .time-display.editable:hover {
-    color: var(--primary);
-    border-bottom-color: var(--primary);
+    color: var(--primary); border-bottom-color: var(--primary);
 }
 
 @keyframes blinkCritical {
@@ -154,59 +137,65 @@ input:checked + .slider .label-right { color: var(--text); }
 
 .global-buttons {
     margin-top: 1.5rem;
-    display: flex; justify-content: center; gap: 1rem; align-items: center;
+    display: flex; justify-content: center; gap: 1.5rem; align-items: center;
 }
 
+/* BUTTON STYLES (NO BORDER) */
 .btn {
-    border: none; border-radius: 12px;
+    border: none !important; /* Force no border */
+    border-radius: 16px;
     display: flex; align-items: center; justify-content: center;
     font-weight: bold; cursor: pointer;
-    transition: transform 0.1s, opacity 0.2s;
-    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+    transition: transform 0.1s, opacity 0.2s, background-color 0.2s;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
 }
 .btn:active { transform: scale(0.95); }
-.btn:disabled { opacity: 0.4 !important; cursor: not-allowed; box-shadow: none; }
+.btn:disabled {
+    opacity: 0.4 !important; cursor: not-allowed !important;
+    filter: grayscale(100%); pointer-events: none;
+}
 
-/* Gleiche Größe für Global Play & Reset */
-.btn-global-icon { width: 80px; height: 80px; padding: 0; }
+/* Global Icons: Padding Hinzugefügt */
+.btn-global-icon { 
+    width: 80px; height: 80px; 
+    padding: 15px; /* PADDING WIE GEWÜNSCHT */
+}
 
-.btn-reset { background-color: var(--card-bg); color: var(--text-muted); border: 1px solid var(--border); }
-.btn-reset:hover { background-color: var(--border); color: var(--danger); }
+/* Reset Button Style */
+.btn-reset {
+    background-color: var(--card-bg); color: var(--text-muted); 
+    /* border: 2px solid var(--border); REMOVED - User wants NO borders */
+    background-color: var(--border); /* Alternative: Slight BG instead of border */
+}
+.btn-reset:hover { color: var(--danger); background-color: rgba(239, 68, 68, 0.1); }
+
 .btn-primary { background-color: var(--primary); color: white; }
 .btn-primary:hover { background-color: var(--primary-hover); }
 
+.btn-secondary { background-color: var(--border); color: var(--text); }
+.btn-secondary:hover { filter: brightness(0.9); }
+
 /* =========================================
-   5. ROBOT LIST & MOBILE FIX
+   5. ROBOT LIST (FULL WIDTH)
    ========================================= */
-.robot-grid {
-    display: grid; grid-template-columns: 1fr; gap: 1rem; width: 100%;
-}
+.robot-grid { display: grid; grid-template-columns: 1fr; gap: 1rem; width: 100%; }
 
 .robot-card {
     background: var(--card-bg); border-radius: 16px;
     box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); padding: 1.25rem;
     display: grid;
-    /* Layout: Name | Controls | Time | Progress */
+    /* Grid Spaltenaufteilung optimiert */
     grid-template-columns: 1fr auto auto 1fr; 
     align-items: center; gap: 1.5rem;
     animation: fadeIn 0.3s ease;
 }
 @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
 
-/* Mobile Optimierung: Volle Breite für Controls */
 @media (max-width: 700px) {
-    .robot-card { grid-template-columns: 1fr auto; row-gap: 1rem; }
+    .robot-card { grid-template-columns: 1fr auto; row-gap: 1.5rem; }
     .robot-progress { grid-column: 1 / -1; }
     .robot-time { grid-column: 2; grid-row: 1; font-size: 1.5rem; }
-    
-    .robot-controls {
-        grid-column: 1 / -1; /* Volle Breite */
-        width: 100%;
-        justify-content: space-between; /* Elemente verteilen */
-    }
-    /* Buttons nehmen verfügbaren Platz */
-    .btn-play-small { flex: 1; }
-    .count-controls { flex: 1; }
+    .robot-controls { grid-column: 1 / -1; width: 100%; }
 }
 
 .robot-header { display: flex; align-items: center; gap: 12px; min-width: 150px; }
@@ -217,8 +206,8 @@ input:checked + .slider .label-right { color: var(--text); }
 .status-dot.offline { background-color: var(--danger); }
 .status-tooltip {
     visibility: hidden; position: absolute; bottom: 100%; left: 50%;
-    transform: translateX(-50%); margin-bottom: 5px;
-    background-color: #333; color: #fff; padding: 4px 8px; border-radius: 4px;
+    transform: translateX(-50%); margin-bottom: 8px;
+    background-color: #222; color: #fff; padding: 5px 10px; border-radius: 6px;
     font-size: 0.75rem; white-space: nowrap; opacity: 0; transition: opacity 0.2s;
     pointer-events: none;
 }
@@ -232,31 +221,29 @@ input:checked + .slider .label-right { color: var(--text); }
 .robot-name-input:focus { outline: none; border-bottom: 2px solid var(--primary); }
 .robot-name-input:hover { border-bottom-color: var(--border); }
 
-/* Controls Container */
-.robot-controls {
-    display: flex; gap: 10px; min-width: 200px;
+/* Controls Layout */
+.robot-controls { 
+    display: flex; flex-direction: column; gap: 8px; min-width: 140px; 
 }
+
 .btn-play-small {
-    flex-grow: 2; height: 44px; border-radius: 8px;
-    /* IMMER Orange (Primary), auch bei Pause, nur Icon ändert sich */
+    width: 100%; height: 44px; border-radius: 12px;
     background-color: var(--primary); color: white;
 }
 .btn-play-small:hover { background-color: var(--primary-hover); }
+.btn-play-small.active { background-color: var(--primary); }
 
-.count-controls { display: flex; gap: 8px; flex-grow: 1; }
+.count-controls { display: flex; gap: 8px; width: 100%; }
 .count-controls button {
-    flex: 1; height: 44px; border-radius: 8px; font-size: 1.4rem; padding: 0; color: white;
+    flex: 1; height: 44px; border-radius: 12px; font-size: 1.4rem; padding: 0; color: white;
 }
-.btn-minus { background-color: #ef4444; }
-.btn-minus:hover { background-color: #dc2626; }
-.btn-plus { background-color: #22c55e; }
-.btn-plus:hover { background-color: #16a34a; }
+.btn-minus { background-color: #ef4444; } .btn-minus:hover { background-color: #dc2626; }
+.btn-plus { background-color: #22c55e; } .btn-plus:hover { background-color: #16a34a; }
 
 .robot-time {
     font-size: 2.2rem; font-weight: 700; font-variant-numeric: tabular-nums;
     min-width: 110px; text-align: center;
 }
-
 .robot-progress {
     height: 24px; background: var(--border); border-radius: 12px;
     position: relative; overflow: hidden; width: 100%; min-width: 100px;
@@ -267,20 +254,19 @@ input:checked + .slider .label-right { color: var(--text); }
     font-size: 0.85rem; font-weight: 800; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.5);
 }
 
-/* Modals & Leaderboard (gekürzt) */
+/* Modals */
 .leaderboard-container { background: transparent; }
+.lb-list { list-style: none; }
 .lb-item {
     display: flex; align-items: center; padding: 1rem;
     background: var(--card-bg); margin-bottom: 0.5rem;
     border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 .lb-rank { font-size: 1.2rem; font-weight: bold; width: 40px; color: var(--primary); }
-.lb-info { flex: 1; }
-.lb-score { font-size: 1.5rem; font-weight: bold; }
+.lb-info { flex: 1; } .lb-score { font-size: 1.5rem; font-weight: bold; }
 
 .modal {
-    display: none; position: fixed; z-index: 2000;
-    left: 0; top: 0; width: 100%; height: 100%;
+    display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%;
     background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center;
     backdrop-filter: blur(4px);
 }
@@ -290,13 +276,13 @@ input:checked + .slider .label-right { color: var(--text); }
     width: 90%; max-width: 350px; text-align: center;
     box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2);
 }
-/* Time Input Fixes */
+
 .time-input-wrapper { display: flex; justify-content: center; gap: 5px; margin: 2rem 0; align-items: center; }
 .time-input {
     width: 90px; height: 90px; font-size: 3.5rem; text-align: center;
     border: 2px solid var(--border); border-radius: 12px;
     background: var(--bg); color: var(--text);
-    -moz-appearance: textfield; /* Firefox spinner weg */
+    -moz-appearance: textfield; 
 }
 .time-input::-webkit-outer-spin-button, .time-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .time-input::placeholder { color: var(--text-muted); opacity: 0.3; }

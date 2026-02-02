@@ -3,11 +3,9 @@ idf_component_register(
     INCLUDE_DIRS "."
     PRIV_REQUIRES esp_http_server esp_http_client nvs_flash esp_timer esp_netif esp_eth esp_wifi mdns
     REQUIRES driver json
-    EMBED_FILES "../html/config.html"
-                "../html/main.html"
+    EMBED_FILES "../html/main.html"
                "../html/style.css"
                "../html/main.js"
-               "../html/config.js"
                "../html/img/sun-moon.png" 
                     
 )

@@ -3,6 +3,7 @@
 #include "global_vars.h"
 #include "udp_sync.h"
 #include "nvs_flash.h"
+#include "nvs.h" // WICHTIG: Include für NVS Funktionen
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "driver/gpio.h"
@@ -18,7 +19,7 @@ std::vector<Robot> robots;
 std::vector<LeaderboardEntry> leaderboard;
 
 bool global_paused = true;
-int64_t global_game_time_ms = 300000; 
+int64_t global_game_time_ms = 300000; // Default 5 Min (Fallback)
 int64_t last_loop_time = 0;
 
 // Interrupt Variablen
@@ -62,15 +63,34 @@ void init_gpios() {
     gpio_isr_handler_add(ROBOT_PIN_2, gpio_isr_handler_2, (void*) ROBOT_PIN_2);
 }
 
+// Lokale Funktion zum Laden der Zeit (identisch zu webserver.cpp, aber hier im main scope nötig)
+void load_startup_time() {
+    nvs_handle_t my_handle;
+    esp_err_t err = nvs_open("storage", NVS_READONLY, &my_handle);
+    if (err == ESP_OK) {
+        int64_t stored_time = 0;
+        if (nvs_get_i64(my_handle, "game_time", &stored_time) == ESP_OK) {
+            global_game_time_ms = stored_time;
+            ESP_LOGI(TAG, "Startzeit aus NVS geladen: %lld ms", stored_time);
+        }
+        nvs_close(my_handle);
+    } else {
+        ESP_LOGW(TAG, "NVS konnte nicht geöffnet werden, nutze Default Zeit.");
+    }
+}
+
 void init_master_robots() {
     if (!is_master) return;
     xSemaphoreTake(game_mutex, portMAX_DELAY);
     
-    Robot r1; r1.id = 1; strcpy(r1.name, "Master Left"); r1.pieces = 0; r1.time_left_ms = 300000; 
+    // Init mit der (potenziell aus NVS geladenen) Zeit
+    Robot r1; r1.id = 1; strcpy(r1.name, "Master Left"); r1.pieces = 0; 
+    r1.time_left_ms = global_game_time_ms; // <-- HIER
     r1.is_running = false; r1.client_ip = 0; r1.pin_index = 0; r1.last_seen = esp_timer_get_time(); r1.do_blink = false;
     robots.push_back(r1);
 
-    Robot r2; r2.id = 2; strcpy(r2.name, "Master Right"); r2.pieces = 0; r2.time_left_ms = 300000; 
+    Robot r2; r2.id = 2; strcpy(r2.name, "Master Right"); r2.pieces = 0; 
+    r2.time_left_ms = global_game_time_ms; // <-- HIER
     r2.is_running = false; r2.client_ip = 0; r2.pin_index = 1; r2.last_seen = esp_timer_get_time(); r2.do_blink = false;
     robots.push_back(r2);
     
@@ -129,7 +149,6 @@ void broadcast_all() {
     cJSON_AddBoolToObject(root, "global_paused", global_paused);
     cJSON_AddNumberToObject(root, "global_time", (double)global_game_time_ms);
 
-    // Robots Array
     cJSON *arr = cJSON_CreateArray();
     int64_t now = esp_timer_get_time();
     
@@ -143,17 +162,15 @@ void broadcast_all() {
         bool online = (now - r.last_seen) < 4000000;
         cJSON_AddBoolToObject(item, "online", online);
         
-        // Origin String für Tooltip erzeugen
         char origin[32];
         if (r.client_ip == 0) strcpy(origin, "Master ESP");
-        else snprintf(origin, sizeof(origin), "Client IP: ...%d", (int)(r.client_ip >> 24)); // Nur letztes Oktett grob
+        else snprintf(origin, sizeof(origin), "Client IP: ...%d", (int)(r.client_ip >> 24)); 
         cJSON_AddStringToObject(item, "origin", origin);
         
         cJSON_AddItemToArray(arr, item);
     }
     cJSON_AddItemToObject(root, "robots", arr);
 
-    // Leaderboard Array (DAS FEHLTE VORHER!)
     cJSON *lb_arr = cJSON_CreateArray();
     for(const auto &entry : leaderboard) {
         cJSON *e = cJSON_CreateObject();
@@ -174,7 +191,15 @@ void broadcast_all() {
 }
 
 extern "C" void app_main(void) {
-    nvs_flash_init();
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        nvs_flash_init();
+    }
+    
+    // VOR ALLEM ANDEREN: Zeit laden!
+    load_startup_time();
+
     game_mutex = xSemaphoreCreateMutex();
     init_gpios();
     esp_netif_init();
