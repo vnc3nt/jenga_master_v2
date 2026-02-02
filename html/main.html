@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jenga Master</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="connectionBanner">Verbindung verloren... Versuche Reconnect</div>
+    <div id="app">
+        
+        <!-- Main Page -->
+        <div id="mainPage" class="container">
+            <!-- Header -->
+            <div class="header">
+                 <!-- Locate Button (Left) -->
+                <button id="locateBtn" class="locate-btn" aria-label="Locate Device">
+                    <svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                        <circle cx="12" cy="10" r="3"></circle>
+                    </svg>
+                </button>
+
+                <!-- Theme Toggle (Right) -->
+                <button id="themeToggle" class="theme-toggle" aria-label="Toggle theme">
+                    <svg class="icon" width="24" height="24" viewBox="-2 -2 28 28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <!-- Sonne (vom Strich weg verschoben: -3.54, -3.54) -->
+                        <g transform="translate(-3.54 -3.54)">
+                            <path d="M9.173 14.83a4 4 0 1 1 5.657 -5.657"></path>
+                            <path d="M3 12h1"></path>
+                            <path d="M12 3v1"></path>
+                            <path d="M5.6 5.6l.7 .7"></path>
+                        </g>
+
+                        <!-- Mond (vom Strich weg verschoben: +3.54, +3.54) -->
+                        <g transform="translate(3.54 3.54)">
+                            <path d="M11.294 12.707l.174 .247a7.5 7.5 0 0 0 8.845 2.492a9 9 0 0 1 -14.671 2.914"></path>
+                        </g>
+
+                        <!-- Diagonale: ein einziger durchgehender Path -->
+                        <path d="M3 21L21 3"></path>
+
+                    </svg>
+                </button>
+
+                <!-- Mode Switch (Center) - NEU: Toggle Switch -->
+                <div class="mode-switch-container">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="modeToggle">
+                        <span class="slider round">
+                            <span class="label-text label-left">Countdown</span>
+                            <span class="label-text label-right">Countup</span>
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Team Name Input (Centered below switch) -->
+            <div class="team-input-container" style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 1rem;">
+                <label for="teamNameInput" style="font-weight: 500; font-size: 1rem;">Team:</label>
+                <input type="text" id="teamNameInput" class="form-input" style="max-width: 200px;" placeholder="Name eingeben">
+            </div>
+
+            <!-- Main Content Grid -->
+            <div class="main-content">
+                <!-- Leaderboard (Left) -->
+                <div id="leaderboardContainer" class="leaderboard-container">
+                    <div class="leaderboard-header-controls">
+                         <button id="filterBtn" class="btn-icon-abs top-left" aria-label="Filter">
+                             <svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                 <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                             </svg>
+                         </button>
+                         <h3 class="leaderboard-title">Leaderboard</h3>
+                         <button id="fullscreenBtn" class="btn-icon-abs top-right" aria-label="Fullscreen">
+                             <svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                 <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                             </svg>
+                         </button>
+                    </div>
+                    <div id="leaderboardList" class="leaderboard-list">
+                        <!-- Items will be injected via JS -->
+                        <div class="leaderboard-item">
+                            <div class="leaderboard-info" style="text-align: center; color: #6b7280;">Lade Daten...</div>
+                        </div>
+                    </div>
+                    <!-- Delete All Button (visible only in fullscreen) -->
+                     <div id="leaderboardFooter" class="leaderboard-footer hidden">
+                        <button id="deleteAllBtn" class="btn btn-secondary" style="width: 100%; color: #dc2626; border-color: #dc2626;">
+                            Leaderboard löschen
+                        </button>
+                     </div>
+                </div>
+
+                <!-- Timer (Center) -->
+                <div class="timer-container">
+                    <div id="timeDisplay" class="time-display editable">
+                        00:00
+                    </div>
+                    
+                    <!-- Hidden Input for Editing -->
+                    <input type="number" id="timeInput" class="time-input hidden" placeholder="Sekunden">
+
+                    <!-- Progress Bar -->
+                    <div id="progressContainer" class="progress-container">
+                        <div class="progress-bar">
+                            <div id="progressFill" class="progress-fill" style="width: 100%"></div>
+                        </div>
+                    </div>
+
+                    <div class="controls">
+                        <!-- NEU: Reset Button -->
+                        <button id="resetBtn" class="btn btn-primary btn-square" aria-label="Reset Time">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                                <polyline points="7 3 7 8 15 8"></polyline>
+                            </svg>
+                        </button>
+                        
+                         <!-- Tower Fell Toggle -->
+                        <button id="towerFellBtn" class="btn btn-secondary" style="display: flex; align-items: center; justify-content: center; padding: 0.5rem;" aria-pressed="false" title="Turmstatus ändern">
+                            <span id="towerFellIcon" style="display: flex; align-items: center;">
+                                <svg width="24" height="24" viewBox="0 0 100 100" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                  <path d="M20 85 h60 v-10 h-60 z M20 73 h18 v-10 h-18 z M41 73 h18 v-10 h-18 z M62 73 h18 v-10 h-18 z M20 61 h60 v-10 h-60 z M20 49 h18 v-10 h-18 z M41 49 h18 v-10 h-18 z M62 49 h18 v-10 h-18 z M20 37 h60 v-10 h-60 z M20 25 h18 v-10 h-18 z M41 25 h18 v-10 h-18 z M62 25 h18 v-10 h-18 z"/>
+                                </svg>
+                            </span> 
+                        </button>
+
+                        <!-- Existierender Play Button -->
+                        <button id="playPauseBtn" class="btn btn-primary">
+                            <svg id="playIcon" class="icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                            </svg>
+                            <svg id="pauseIcon" class="icon hidden" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="6" y="4" width="4" height="16"></rect>
+                                <rect x="14" y="4" width="4" height="16"></rect>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Counter (Right) -->
+                <div class="counter-container">
+                    <h3 class="counter-title">Züge</h3>
+                    <div id="counterValue" class="counter-value">0</div>
+                    <div class="counter-buttons">
+                        <button id="decrementBtn" class="counter-btn decrement-btn" disabled>−</button>
+                        <button id="incrementBtn" class="counter-btn increment-btn">+</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Time Modal -->
+        <div id="timeModal" class="modal">
+            <div class="modal-content">
+                <h2 class="modal-title">Startzeit ändern</h2>
+                
+                <!-- NEU: Zwei Inputs für MM und SS -->
+                <div class="time-input-wrapper">
+                    <input type="number" id="inputMin" class="time-input" placeholder="00" min="0" max="99">
+                    <span class="time-separator">:</span>
+                    <input type="number" id="inputSec" class="time-input" placeholder="00" min="0" max="59">
+                </div>
+
+                <div class="modal-actions">
+                    <button id="modalCancelBtn" class="btn btn-secondary">Abbrechen</button>
+                    <button id="modalSaveBtn" class="btn btn-primary">Speichern</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Password Modal -->
+        <div id="passwordModal" class="modal">
+            <div class="modal-content">
+                <h2 class="modal-title">Passwort eingeben</h2>
+                <div class="form-group">
+                    <input type="password" id="passwordInput" class="form-input" placeholder="Passwort" autocomplete="off">
+                </div>
+                <div class="modal-actions">
+                    <button id="pwCancelBtn" class="btn btn-secondary">Abbrechen</button>
+                    <button id="pwConfirmBtn" class="btn btn-primary">Bestätigen</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter Modal -->
+        <div id="filterModal" class="modal">
+            <div class="modal-content">
+                <h2 class="modal-title">Leaderboard Filtern</h2>
+                
+                <div class="filter-option" style="margin-bottom: 20px;">
+                    <span style="display:block; margin-bottom: 5px; font-weight:500;">Anzeige je Team</span>
+                    <div class="mode-switch-container">
+                        <label class="toggle-switch" style="width: 100%; height: 40px;">
+                            <input type="checkbox" id="filterBestToggle">
+                            <span class="slider round">
+                                <span class="label-text label-left">Alle</span>
+                                <span class="label-text label-right">Nur Beste</span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="filter-option" style="margin-bottom: 20px;">
+                     <span style="display:block; margin-bottom: 5px; font-weight:500;">Turm</span>
+                     <div class="mode-switch-container">
+                        <label class="toggle-switch" style="width: 100%; height: 40px;">
+                            <input type="checkbox" id="filterTowerToggle">
+                            <span class="slider round">
+                                <span class="label-text label-left">Egal</span>
+                                <span class="label-text label-right">Stehend</span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button id="filterCloseBtn" class="btn btn-primary" style="width:100%">Schließen</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Entry Modal -->
+        <div id="editEntryModal" class="modal">
+            <div class="modal-content">
+                <h2 class="modal-title">Eintrag bearbeiten</h2>
+                <div class="form-group">
+                    <label>Team Name</label>
+                    <input type="text" id="editTeamName" class="form-input">
+                </div>
+                <!-- Not changing Moves/Time in this version to keep it simple or user wants 'alle daten'? User said 'alle daten'. -->
+                <div class="form-group" style="display:flex; gap:10px;">
+                    <div style="flex:1">
+                        <label>Züge</label>
+                        <input type="number" id="editMoves" class="form-input">
+                    </div>
+                    <div style="flex:1">
+                         <label>Zeit (Sekunden)</label>
+                         <input type="number" id="editTimeSec" class="form-input">
+                    </div>
+                </div>
+                 <div class="form-group">
+                    <label>Turm gefallen?</label>
+                    <div class="mode-switch-container">
+                        <label class="toggle-switch" style="width: 100%; height: 40px;">
+                            <input type="checkbox" id="editTowerFellToggle">
+                            <span class="slider round">
+                                <span class="label-text label-left">Nein</span>
+                                <span class="label-text label-right">Ja</span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="modal-actions" style="justify-content: space-between;">
+                    <button id="deleteEntryBtn" class="btn btn-secondary" style="color: #dc2626; border: 1px solid #dc2626;">Löschen</button>
+                    <div style="display:flex; gap:10px;">
+                         <button id="editCancelBtn" class="btn btn-secondary">Abb.</button>
+                         <button id="editSaveBtn" class="btn btn-primary">Speichern</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    <script src="main.js"></script>
+</body>
+</html>
