@@ -17,7 +17,6 @@ SemaphoreHandle_t game_mutex = NULL;
 std::vector<Robot> robots;
 std::vector<LeaderboardEntry> leaderboard;
 
-// Initialisierung der Globalen Zeit (z.B. 5 Minuten)
 bool global_paused = true;
 int64_t global_game_time_ms = 300000; 
 int64_t last_loop_time = 0;
@@ -28,7 +27,6 @@ volatile int pulse_count_buffer_2 = 0;
 volatile int64_t last_irq_time_1 = 0;
 volatile int64_t last_irq_time_2 = 0;
 
-// --- ISR (Bleibt gleich, funktioniert gut für High-Signale) ---
 void IRAM_ATTR gpio_isr_handler_1(void* arg) {
     int64_t now = esp_timer_get_time();
     if (now - last_irq_time_1 > 200000) { 
@@ -68,7 +66,6 @@ void init_master_robots() {
     if (!is_master) return;
     xSemaphoreTake(game_mutex, portMAX_DELAY);
     
-    // Initialisiere mit individueller Zeit (optional gleich der globalen)
     Robot r1; r1.id = 1; strcpy(r1.name, "Master Left"); r1.pieces = 0; r1.time_left_ms = 300000; 
     r1.is_running = false; r1.client_ip = 0; r1.pin_index = 0; r1.last_seen = esp_timer_get_time(); r1.do_blink = false;
     robots.push_back(r1);
@@ -81,7 +78,6 @@ void init_master_robots() {
 }
 
 void send_to_master(int pin_idx, bool is_ping) {
-    // Client ist dumm: Sendet nur Requests. Keine Zeitberechnung.
     esp_http_client_config_t config = {};
     char url[64];
     if (is_ping) snprintf(url, sizeof(url), "http://192.168.4.1/api/ping");
@@ -95,12 +91,10 @@ void send_to_master(int pin_idx, bool is_ping) {
     
     if (err == ESP_OK) {
         if (!is_ping) {
-            // LED Feedback für Puls
             gpio_set_level(CONNECTION_LED_PIN, 1);
             vTaskDelay(pdMS_TO_TICKS(50));
             gpio_set_level(CONNECTION_LED_PIN, 0);
         } else {
-            // LED Feedback für Locate-Befehl vom Master
             int len = esp_http_client_get_content_length(client);
             if (len > 0) {
                 char *buf = (char*)malloc(len + 1);
@@ -130,12 +124,12 @@ void broadcast_all() {
     if(!is_master) return;
 
     cJSON *root = cJSON_CreateObject();
-    cJSON_AddBoolToObject(root, "global_paused", global_paused);
-    
-    // Jetzt die unabhängige globale Zeit senden
     xSemaphoreTake(game_mutex, portMAX_DELAY);
+    
+    cJSON_AddBoolToObject(root, "global_paused", global_paused);
     cJSON_AddNumberToObject(root, "global_time", (double)global_game_time_ms);
 
+    // Robots Array
     cJSON *arr = cJSON_CreateArray();
     int64_t now = esp_timer_get_time();
     
@@ -146,14 +140,30 @@ void broadcast_all() {
         cJSON_AddNumberToObject(item, "pieces", r.pieces);
         cJSON_AddNumberToObject(item, "time_left", (double)r.time_left_ms);
         cJSON_AddBoolToObject(item, "running", r.is_running);
-        
-        bool online = (now - r.last_seen) < 4000000; // 4s Timeout
+        bool online = (now - r.last_seen) < 4000000;
         cJSON_AddBoolToObject(item, "online", online);
+        
+        // Origin String für Tooltip erzeugen
+        char origin[32];
+        if (r.client_ip == 0) strcpy(origin, "Master ESP");
+        else snprintf(origin, sizeof(origin), "Client IP: ...%d", (int)(r.client_ip >> 24)); // Nur letztes Oktett grob
+        cJSON_AddStringToObject(item, "origin", origin);
         
         cJSON_AddItemToArray(arr, item);
     }
-    xSemaphoreGive(game_mutex);
     cJSON_AddItemToObject(root, "robots", arr);
+
+    // Leaderboard Array (DAS FEHLTE VORHER!)
+    cJSON *lb_arr = cJSON_CreateArray();
+    for(const auto &entry : leaderboard) {
+        cJSON *e = cJSON_CreateObject();
+        cJSON_AddStringToObject(e, "name", entry.team_name);
+        cJSON_AddNumberToObject(e, "pieces", entry.moves);
+        cJSON_AddItemToArray(lb_arr, e);
+    }
+    cJSON_AddItemToObject(root, "leaderboard", lb_arr);
+
+    xSemaphoreGive(game_mutex);
 
     char *json_str = cJSON_PrintUnformatted(root);
     if(json_str) {
@@ -187,38 +197,28 @@ extern "C" void app_main(void) {
         last_loop_time = now;
         int64_t delta_ms = delta_us / 1000;
 
-        // Inputs abholen
         int p1 = pulse_count_buffer_1; pulse_count_buffer_1 = 0;
         int p2 = pulse_count_buffer_2; pulse_count_buffer_2 = 0;
 
         if (is_master) {
-            // === MASTER ===
             xSemaphoreTake(game_mutex, portMAX_DELAY);
             
-            // 1. Globale Zeit läuft unabhängig (nur bei Global Pause Stop)
             if (!global_paused && global_game_time_ms > 0) {
                 global_game_time_ms -= delta_ms;
                 if(global_game_time_ms < 0) global_game_time_ms = 0;
             }
 
             for (auto &rob : robots) {
-                // 2. Individuelle Zeiten laufen NUR wenn Global AN UND Roboter AN
                 if (!global_paused && rob.is_running && rob.time_left_ms > 0) {
                     rob.time_left_ms -= delta_ms;
                     if(rob.time_left_ms < 0) rob.time_left_ms = 0;
                 }
                 
-                // Lokale Pulse verarbeiten
                 if (rob.client_ip == 0) {
                     rob.last_seen = now; 
-                    if (rob.is_running && !global_paused) { // Nur Zählen wenn Zeit läuft? (Oder immer?) -> User: "solange die zeit des jeweiligen roboters läuft"
+                    if (rob.is_running && !global_paused) { 
                         if (rob.pin_index == 0 && p1 > 0) rob.pieces += p1;
                         if (rob.pin_index == 1 && p2 > 0) rob.pieces += p2;
-                    }
-                    
-                    if (rob.do_blink) {
-                        rob.do_blink = false; 
-                        // Blinken...
                     }
                 }
             }
@@ -229,17 +229,14 @@ extern "C" void app_main(void) {
                 broadcast_all();
                 broadcast_timer = 0;
             }
-            
             gpio_set_level(PAUSE_LED_PIN, global_paused ? 1 : 0);
 
         } else {
-            // === CLIENT (DUMMY) ===
-            // Sendet stumpf Pulse, kümmert sich um nichts.
             for (int i=0; i < p1; i++) send_to_master(0, false);
             for (int i=0; i < p2; i++) send_to_master(1, false);
             
             ping_timer += delta_ms;
-            if (ping_timer >= 2000) { // Alle 2s Ping reicht
+            if (ping_timer >= 2000) { 
                 send_to_master(0, true); 
                 ping_timer = 0;
             }

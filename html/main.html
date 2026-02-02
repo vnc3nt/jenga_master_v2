@@ -20,18 +20,24 @@
                 <label class="toggle-switch">
                     <input type="checkbox" id="viewToggle">
                     <span class="slider round">
-                        <span class="label-text label-left">Spiel</span>
-                        <span class="label-text label-right">Rangliste</span>
+                        <div class="slider-labels">
+                            <span class="label-text label-left">Spiel</span>
+                            <span class="label-text label-right">Rangliste</span>
+                        </div>
                     </span>
                 </label>
             </div>
 
             <div class="global-controls-section">
-                <div id="globalTimeDisplay" class="time-display" onclick="openGlobalTimeModal()">00:00</div>
+                <div id="globalTimeDisplay" class="time-display" onclick="tryOpenGlobalTimeModal()">00:00</div>
                 
                 <div class="global-buttons">
-                    <button id="globalResetBtn" class="btn btn-reset" title="Spiel zurücksetzen & Speichern">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                    <button id="globalResetBtn" class="btn btn-reset" title="Reset">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                            <path d="M2 10 L6 14 L2 18" stroke="var(--danger)" stroke-width="2.5"></path>
+                        </svg>
                     </button>
 
                     <button id="globalPlayBtn" class="btn btn-primary" title="Start / Pause">
@@ -65,8 +71,20 @@
                     <input type="number" id="inputSec" class="time-input" placeholder="00" min="0" max="59">
                 </div>
                 <div class="modal-actions">
-                    <button id="modalCancelBtn" class="btn btn-secondary" style="width: auto; height: auto; padding: 1rem;">Abbrechen</button>
-                    <button id="modalSaveBtn" class="btn btn-primary" style="width: auto; height: auto; padding: 1rem;">Speichern</button>
+                    <button id="modalCancelBtn" class="btn btn-secondary" style="padding: 1rem;">Abbrechen</button>
+                    <button id="modalSaveBtn" class="btn btn-primary" style="padding: 1rem;">Speichern</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="resetModal" class="modal">
+            <div class="modal-content">
+                <h2 class="modal-title">Spiel zurücksetzen</h2>
+                <p style="margin-bottom: 1.5rem; color: var(--text-muted);">Sollen die aktuellen Ergebnisse gespeichert werden?</p>
+                <div class="confirm-btn-group">
+                    <button id="btnResetSave" class="btn btn-primary">Speichern & Reset</button>
+                    <button id="btnResetNoSave" class="btn btn-reset" style="border-color:var(--danger); color:var(--danger);">Nicht Speichern (Nur Reset)</button>
+                    <button id="btnResetCancel" class="btn btn-secondary" style="margin-top: 10px;">Abbrechen</button>
                 </div>
             </div>
         </div>

@@ -1,12 +1,12 @@
 document.addEventListener('DOMContentLoaded', () => {
     
-    // ICONS
+    // ICONS (SVG)
     const ICON_PLAY = `<svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
     const ICON_PAUSE = `<svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
     const ICON_PLAY_SMALL = `<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
     const ICON_PAUSE_SMALL = `<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
 
-    // Globals
+    // GLOBALS
     let socket;
     let robots = [];
     let leaderboardData = [];
@@ -14,27 +14,31 @@ document.addEventListener('DOMContentLoaded', () => {
     let globalTimeMs = 300000; 
     let lastUpdate = Date.now(); 
 
-    // Elements
+    // DOM ELEMENTS
     const globalPlayBtn = document.getElementById('globalPlayBtn');
-    const globalResetBtn = document.getElementById('globalResetBtn'); // <-- NEU
+    const globalResetBtn = document.getElementById('globalResetBtn');
     const globalTimeDisplay = document.getElementById('globalTimeDisplay');
     const robotGrid = document.getElementById('robotGrid');
     
-    // Views etc...
     const viewToggle = document.getElementById('viewToggle');
     const leaderboardView = document.getElementById('leaderboardView');
     const leaderboardList = document.getElementById('leaderboardList');
     const filterMeanCheckbox = document.getElementById('filterMean');
     const deleteAllBtn = document.getElementById('deleteAllBtn');
     
-    // Modal
+    // Modals
     const timeModal = document.getElementById('timeModal');
     const inputMin = document.getElementById('inputMin');
     const inputSec = document.getElementById('inputSec');
     const modalSaveBtn = document.getElementById('modalSaveBtn');
     const modalCancelBtn = document.getElementById('modalCancelBtn');
+    
+    const resetModal = document.getElementById('resetModal');
+    const btnResetSave = document.getElementById('btnResetSave');
+    const btnResetNoSave = document.getElementById('btnResetNoSave');
+    const btnResetCancel = document.getElementById('btnResetCancel');
 
-    // Theme
+    // --- INITIALISIERUNG ---
     if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark');
     document.getElementById('themeToggle').addEventListener('click', () => {
         document.body.classList.toggle('dark');
@@ -56,7 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     filterMeanCheckbox.addEventListener('change', renderLeaderboard);
     deleteAllBtn.addEventListener('click', () => {
-        if(confirm("Alle Daten löschen?")) socket.send(JSON.stringify({cmd: "delete_all"}));
+        if(confirm("Alle Daten unwiderruflich löschen?")) socket.send(JSON.stringify({cmd: "delete_all"}));
     });
 
     // --- GAME LOOP ---
@@ -65,7 +69,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const now = Date.now();
             const delta = now - lastUpdate;
             lastUpdate = now;
-            
             globalTimeMs -= delta;
             if(globalTimeMs < 0) globalTimeMs = 0;
             globalTimeDisplay.textContent = formatTime(globalTimeMs / 1000);
@@ -73,20 +76,22 @@ document.addEventListener('DOMContentLoaded', () => {
             lastUpdate = Date.now();
         }
 
-        // BLINK LOGIC (< 10 Sekunden)
+        // Blink Alarm
         if (globalTimeMs < 10000 && globalTimeMs > 0) {
             globalTimeDisplay.classList.add('blink-critical');
         } else {
             globalTimeDisplay.classList.remove('blink-critical');
         }
 
-        // Client Side Prediction für Roboter
+        // Editierbarkeit anzeigen (nur wenn Pause)
+        if(isGlobalPaused) globalTimeDisplay.classList.add('editable');
+        else globalTimeDisplay.classList.remove('editable');
+
+        // Client Side Prediction Robots
         if(!isGlobalPaused) {
              robots.forEach(r => {
                 if (r.running && r.time_left > 0) {
-                    // Simpel runterzählen für Anzeige
-                    const timeEl = document.querySelector(`.robot-card[data-id="${r.id}"] .robot-time`);
-                     // Wir berechnen hier nichts wildes, wir warten auf Sync, aber für Animation ok
+                     // Nur visuelles Update, genauer Sync kommt vom Server
                 }
             });
         }
@@ -96,6 +101,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function initWebSocket() {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         socket = new WebSocket(protocol + '//' + window.location.hostname + '/ws');
+        
+        socket.onopen = () => console.log("WebSocket Verbunden");
         
         socket.onmessage = (event) => {
             try {
@@ -107,11 +114,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     isGlobalPaused = data.global_paused;
                     
                     globalPlayBtn.innerHTML = isGlobalPaused ? ICON_PLAY : ICON_PAUSE;
-                    globalPlayBtn.className = isGlobalPaused ? "btn btn-primary" : "btn btn-secondary";
+                    // Immer Primary Farbe (Orange), nur Icon wechselt
+                    globalPlayBtn.className = "btn btn-primary btn-global-icon";
                     
-                    // Reset Button nur aktiv wenn Pausiert
                     globalResetBtn.disabled = !isGlobalPaused;
-                    
                     updateButtonsState();
                 }
                 
@@ -127,16 +133,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (!viewToggle.checked) renderRobots(robots);
                 }
 
+                // 4. Leaderboard
                 if (data.leaderboard) {
                     leaderboardData = data.leaderboard;
                     if (viewToggle.checked) renderLeaderboard();
                 }
 
-            } catch (e) { console.error(e); }
+            } catch (e) { console.error("WS Parse Error", e); }
         };
-        socket.onclose = () => setTimeout(initWebSocket, 2000);
+        socket.onclose = () => {
+            console.log("WebSocket Disconnect. Retry...");
+            setTimeout(initWebSocket, 2000);
+        };
     }
 
+    // --- HELPER ---
     function formatTime(sec) {
         if(sec < 0) sec = 0;
         const m = Math.floor(sec / 60).toString().padStart(2, '0');
@@ -145,10 +156,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateButtonsState() {
+        // Deaktiviert Robot-Buttons wenn Global Play läuft
         const btns = document.querySelectorAll('.robot-controls .btn-play-small');
         btns.forEach(btn => btn.disabled = isGlobalPaused);
     }
 
+    // --- RENDER ROBOTS ---
     function renderRobots(list) {
         const currentIds = list.map(r => r.id);
         Array.from(robotGrid.children).forEach(child => {
@@ -166,7 +179,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const pct = Math.min((rob.pieces / 36) * 100, 100);
             
             const btnIcon = rob.running ? ICON_PAUSE_SMALL : ICON_PLAY_SMALL;
-            const btnClass = rob.running ? 'btn btn-secondary btn-play-small active' : 'btn btn-primary btn-play-small'; 
             
             if (!card) {
                 card = document.createElement('div');
@@ -174,17 +186,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 card.dataset.id = rob.id;
                 card.innerHTML = `
                     <div class="robot-header">
-                        <div class="status-dot ${statusClass}"></div>
+                        <div class="status-dot-wrapper">
+                            <div class="status-dot ${statusClass}"></div>
+                            <div class="status-tooltip">${rob.origin || "Unbekannt"}</div>
+                        </div>
                         <button class="icon-btn locate-icon" onclick="locateRobot(${rob.id})">
                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
                         </button>
                         <input type="text" class="robot-name-input" value="${rob.name}" placeholder="Team Name" onchange="updateName(${rob.id}, this.value)">
                     </div>
                     <div class="robot-controls">
-                        <button class="${btnClass}" onclick="toggleRobot(${rob.id})" ${isGlobalPaused ? 'disabled' : ''}>${btnIcon}</button>
+                        <button class="btn-play-small" onclick="toggleRobot(${rob.id})" ${isGlobalPaused ? 'disabled' : ''}>${btnIcon}</button>
                         <div class="count-controls">
-                            <button class="btn btn-minus" onclick="adjScore(${rob.id}, -1)">-</button>
-                            <button class="btn btn-plus" onclick="adjScore(${rob.id}, 1)">+</button>
+                            <button class="btn-minus" onclick="adjScore(${rob.id}, -1)">-</button>
+                            <button class="btn-plus" onclick="adjScore(${rob.id}, 1)">+</button>
                         </div>
                     </div>
                     <div class="robot-time">${formatTime(rob.time_left / 1000)}</div>
@@ -196,12 +211,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 robotGrid.appendChild(card);
             } else {
                 card.querySelector('.status-dot').className = `status-dot ${statusClass}`;
+                card.querySelector('.status-tooltip').textContent = rob.origin || "Unknown";
+                
                 const inp = card.querySelector('.robot-name-input');
                 if (document.activeElement !== inp) inp.value = rob.name;
                 
                 const btn = card.querySelector('.btn-play-small');
                 if(btn.innerHTML !== btnIcon) btn.innerHTML = btnIcon;
-                btn.className = btnClass;
+                // Immer btn-play-small (Orange), active Status optional entfernen wenn Farbe gleich bleiben soll
+                btn.className = "btn-play-small"; 
                 btn.disabled = isGlobalPaused;
                 
                 card.querySelector('.robot-time').textContent = formatTime(rob.time_left / 1000);
@@ -211,7 +229,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Leaderboard Renderer (unverändert)...
+    // --- RENDER LEADERBOARD ---
     function renderLeaderboard() {
         leaderboardList.innerHTML = "";
         if(leaderboardData.length === 0) {
@@ -250,14 +268,21 @@ document.addEventListener('DOMContentLoaded', () => {
         leaderboardList.appendChild(ul);
     }
 
-    // Actions
+    // --- ACTIONS ---
     window.locateRobot = (id) => socket.send(JSON.stringify({cmd: "locate", id}));
     window.updateName = (id, val) => socket.send(JSON.stringify({cmd: "set_name", id, val}));
     window.toggleRobot = (id) => socket.send(JSON.stringify({cmd: "toggle_robot", id}));
     window.adjScore = (id, val) => socket.send(JSON.stringify({cmd: "adj_score", id, val}));
     
-    // Global Time
-    window.openGlobalTimeModal = function() { timeModal.classList.add('active'); };
+    // Time Edit Logic
+    window.tryOpenGlobalTimeModal = function() {
+        if(isGlobalPaused) {
+            timeModal.classList.add('active');
+        } else {
+            // Optional: Visuelles Feedback, dass es gesperrt ist (z.B. wackeln)
+            console.log("Edit locked");
+        }
+    };
     modalCancelBtn.onclick = () => timeModal.classList.remove('active');
     modalSaveBtn.onclick = () => {
         const m = parseInt(inputMin.value)||0;
@@ -270,12 +295,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // Global Buttons
     globalPlayBtn.onclick = () => socket.send(JSON.stringify({cmd: "toggle_global"}));
     
-    // RESET LOGIK
-    globalResetBtn.onclick = () => {
-        if(confirm("Spiel beenden, Daten speichern und Zeit zurücksetzen?")) {
-            socket.send(JSON.stringify({cmd: "reset_game"}));
-        }
+    // Reset Logic
+    globalResetBtn.onclick = () => resetModal.classList.add('active');
+    
+    btnResetSave.onclick = () => {
+        socket.send(JSON.stringify({cmd: "reset_game", save: true}));
+        resetModal.classList.remove('active');
     };
+    btnResetNoSave.onclick = () => {
+        socket.send(JSON.stringify({cmd: "reset_game", save: false}));
+        resetModal.classList.remove('active');
+    };
+    btnResetCancel.onclick = () => resetModal.classList.remove('active');
 
     initWebSocket();
 });

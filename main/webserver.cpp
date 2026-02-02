@@ -221,35 +221,42 @@ esp_err_t ws_handler(httpd_req_t *req) {
                 
                 // --- RESET GAME ---
                 else if (strcmp(cmd->valuestring, "reset_game") == 0) {
+                    bool should_save = true;
+                    // Prüfen ob "save" parameter dabei ist
+                    cJSON *saveParam = cJSON_GetObjectItem(root, "save");
+                    if (saveParam && cJSON_IsBool(saveParam)) {
+                        should_save = cJSON_IsTrue(saveParam);
+                    }
+
                     xSemaphoreTake(game_mutex, portMAX_DELAY);
                     
-                    // 1. Leaderboard speichern
-                    int64_t now_ts = (int64_t)time(NULL); 
-                    for(const auto &r : robots) {
-                        if(r.pieces > 0 && strlen(r.name) > 0) {
-                            LeaderboardEntry entry;
-                            strncpy(entry.team_name, r.name, sizeof(entry.team_name)-1);
-                            entry.team_name[31] = '\0';
-                            entry.moves = r.pieces;
-                            entry.time_ms = 0; // Spiel beendet
-                            entry.timestamp = now_ts;
-                            leaderboard.push_back(entry);
+                    if (should_save) {
+                        int64_t now_ts = (int64_t)time(NULL); 
+                        for(const auto &r : robots) {
+                            if(r.pieces > 0 && strlen(r.name) > 0) {
+                                LeaderboardEntry entry;
+                                strncpy(entry.team_name, r.name, sizeof(entry.team_name)-1);
+                                entry.team_name[31] = '\0';
+                                entry.moves = r.pieces;
+                                entry.time_ms = 0; 
+                                entry.timestamp = now_ts;
+                                leaderboard.push_back(entry);
+                            }
                         }
                     }
 
-                    // 2. Zeit laden & Reset
+                    // Zeit laden & Reset
                     int64_t start_time = load_time_from_nvs();
                     global_game_time_ms = start_time;
                     global_paused = true;
 
-                    // 3. Roboter Reset
+                    // Roboter Reset
                     for(auto &r : robots) {
                         r.pieces = 0;
                         r.time_left_ms = start_time;
                         r.is_running = false;
                         r.do_blink = false;
                     }
-
                     xSemaphoreGive(game_mutex);
                 }
 
