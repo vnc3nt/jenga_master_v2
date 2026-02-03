@@ -51,21 +51,45 @@ body {
 .icon-btn:hover { background-color: rgba(0,0,0,0.1); }
 body.dark .icon-btn:hover { background-color: rgba(255,255,255,0.1); }
 
+/* =========================================
+   CONNECTION BANNER
+   ========================================= */
 #connectionBanner {
-    position: fixed; top: 0; left: 0; width: 100%;
-    background-color: var(--danger); color: white;
-    text-align: center; padding: 0.5rem; font-weight: bold;
-    z-index: 9999; transform: translateY(-100%);
-    transition: transform 0.3s ease-in-out;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    text-align: center;
+    padding: 0.75rem;
+    font-weight: 700;
+    z-index: 9999;
+    
+    /* Standardmäßig unsichtbar (nach oben geschoben) */
+    transform: translateY(-100%);
+    transition: transform 0.3s ease-in-out, background-color 0.3s;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
 }
-#connectionBanner.visible { transform: translateY(0); }
+
+/* Zustand: Instabil (Orange) */
+#connectionBanner.warning {
+    transform: translateY(0);
+    background-color: var(--primary); /* Orange */
+    color: white;
+}
+
+/* Zustand: Verloren (Rot) */
+#connectionBanner.error {
+    transform: translateY(0);
+    background-color: var(--danger); /* Rot */
+    color: white;
+}
 
 /* =========================================
    3. MODE SWITCH
    ========================================= */
 .mode-switch-container {
     display: flex; justify-content: center;
-    margin-bottom: 3rem; margin-top: 2rem;
+    margin-bottom: 3rem;
 }
 
 .toggle-switch {
@@ -135,9 +159,13 @@ input:checked + .slider .label-right { color: var(--text); }
 }
 .blink-critical { animation: blinkCritical 1s infinite; }
 
-.global-buttons {
-    margin-top: 1.5rem;
-    display: flex; justify-content: center; gap: 1.5rem; align-items: center;
+.global-controls-row {
+    display: flex;
+    justify-content: center; /* Alles mittig */
+    align-items: center;     /* Vertikal zentriert */
+    gap: 2rem;               /* Schöner Abstand zwischen Zeit und Buttons */
+    margin-bottom: 2rem;
+    flex-wrap: wrap;         /* Falls der Screen sehr klein ist, darf es umbrechen */
 }
 
 /* BUTTON STYLES (NO BORDER) */
@@ -185,7 +213,7 @@ input:checked + .slider .label-right { color: var(--text); }
     box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); padding: 1.25rem;
     display: grid;
     /* Grid Spaltenaufteilung optimiert */
-    grid-template-columns: 1fr auto auto 1fr; 
+    grid-template-columns: auto auto auto 1fr; 
     align-items: center; gap: 1.5rem;
     animation: fadeIn 0.3s ease;
 }
@@ -196,6 +224,11 @@ input:checked + .slider .label-right { color: var(--text); }
     .robot-progress { grid-column: 1 / -1; }
     .robot-time { grid-column: 2; grid-row: 1; font-size: 1.5rem; }
     .robot-controls { grid-column: 1 / -1; width: 100%; }
+    .esp-status-grid {
+        max-width: 100%; /* Auf Mobile volle Breite nutzen */
+        position: relative; /* Nicht mehr absolute, damit es nichts überdeckt */
+        margin-bottom: 1rem;
+    }
 }
 
 .robot-header { display: flex; align-items: center; gap: 12px; min-width: 150px; }
@@ -216,10 +249,15 @@ input:checked + .slider .label-right { color: var(--text); }
 .robot-name-input {
     width: 100%; border: none; background: transparent;
     font-size: 1.2rem; font-weight: 700; color: inherit;
-    border-bottom: 1px dashed transparent; transition: border 0.2s;
+    border-bottom: 1px dashed rgba(156, 163, 175, 0.5); transition: border 0.2s;
 }
 .robot-name-input:focus { outline: none; border-bottom: 2px solid var(--primary); }
-.robot-name-input:hover { border-bottom-color: var(--border); }
+.robot-name-input:hover { border-bottom-color: var(--primary); }
+.robot-name-input.error {
+    border-bottom-color: var(--danger) !important;
+    color: var(--danger);
+}
+
 
 /* Controls Layout */
 .robot-controls { 
@@ -229,6 +267,7 @@ input:checked + .slider .label-right { color: var(--text); }
 .btn-play-small {
     width: 100%; height: 44px; border-radius: 12px;
     background-color: var(--primary); color: white;
+    border: none;
 }
 .btn-play-small:hover { background-color: var(--primary-hover); }
 .btn-play-small.active { background-color: var(--primary); }
@@ -236,6 +275,7 @@ input:checked + .slider .label-right { color: var(--text); }
 .count-controls { display: flex; gap: 8px; width: 100%; }
 .count-controls button {
     flex: 1; height: 44px; border-radius: 12px; font-size: 1.4rem; padding: 0; color: white;
+    border: none;
 }
 .btn-minus { background-color: #ef4444; } .btn-minus:hover { background-color: #dc2626; }
 .btn-plus { background-color: #22c55e; } .btn-plus:hover { background-color: #16a34a; }
@@ -292,3 +332,39 @@ input:checked + .slider .label-right { color: var(--text); }
 .modal-actions { display: flex; gap: 1rem; justify-content: center; }
 .confirm-btn-group { display: flex; flex-direction: column; gap: 10px; width: 100%; }
 .confirm-btn-group button { width: 100%; padding: 1rem; }
+
+/* =========================================
+   ESP STATUS ICONS (TOP LEFT)
+   ========================================= */
+.esp-status-grid {
+    position: absolute;
+    top: 0;
+    left: 0;
+    margin-top: 4px; /* Vertikale Ausrichtung zum Theme-Button */
+    margin-left: 20px; /* Kleiner Abstand zum linken Rand */
+    
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap; /* WICHTIG: Erlaubt den Umbruch in neue Zeilen */
+    gap: 8px;
+    
+    /* WICHTIG: Begrenzung der Breite */
+    /* 50vw ist die Bildschirmmitte. Wir ziehen 150px ab (halber Switch + Puffer),
+       damit die Icons nie in den Switch ragen. */
+    max-width: calc(50vw - 200px);
+    
+    z-index: 100;
+    pointer-events: none; /* Klicks gehen durch (falls Icons leer sind) */
+}
+
+.esp-icon {
+    width: 32px;
+    height: 32px;
+    color: var(--text-muted); /* Standardfarbe */
+    transition: color 0.3s, transform 0.3s;
+}
+
+/* Wenn aktiv (z.B. verbunden), nutzen wir die Textfarbe oder Primary */
+.esp-icon.active {
+    color: var(--text);
+}

@@ -3,7 +3,7 @@
 #include "global_vars.h"
 #include "udp_sync.h"
 #include "nvs_flash.h"
-#include "nvs.h" // WICHTIG: Include für NVS Funktionen
+#include "nvs.h"
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "driver/gpio.h"
@@ -11,8 +11,11 @@
 #include "cJSON.h"
 #include <esp_netif.h>
 #include <esp_event.h>
+#include "esp_mac.h"
 
 static const char *TAG = "MAIN";
+
+uint32_t my_client_id = 0;
 
 SemaphoreHandle_t game_mutex = NULL;
 std::vector<Robot> robots;
@@ -99,43 +102,23 @@ void init_master_robots() {
 
 void send_to_master(int pin_idx, bool is_ping) {
     esp_http_client_config_t config = {};
-    char url[64];
-    if (is_ping) snprintf(url, sizeof(url), "http://192.168.4.1/api/ping");
-    else snprintf(url, sizeof(url), "http://192.168.4.1/api/pulse?pin=%d", pin_idx);
+    char url[128]; // Puffer vergrößert
+    
+    if (is_ping) {
+        snprintf(url, sizeof(url), "http://192.168.4.1/api/ping?id=%lu", (unsigned long)my_client_id);
+    } else {
+        snprintf(url, sizeof(url), "http://192.168.4.1/api/pulse?pin=%d&id=%lu", pin_idx, (unsigned long)my_client_id);
+    }
     
     config.url = url;
-    config.timeout_ms = 500;
+    config.timeout_ms = 1000;
     
     esp_http_client_handle_t client = esp_http_client_init(&config);
     esp_err_t err = esp_http_client_perform(client);
     
-    if (err == ESP_OK) {
-        if (!is_ping) {
-            gpio_set_level(CONNECTION_LED_PIN, 1);
-            vTaskDelay(pdMS_TO_TICKS(50));
-            gpio_set_level(CONNECTION_LED_PIN, 0);
-        } else {
-            int len = esp_http_client_get_content_length(client);
-            if (len > 0) {
-                char *buf = (char*)malloc(len + 1);
-                int read_len = esp_http_client_read_response(client, buf, len);
-                if (read_len > 0) {
-                    buf[read_len] = '\0';
-                    cJSON *root = cJSON_Parse(buf);
-                    if (root) {
-                        cJSON *blink = cJSON_GetObjectItem(root, "blink");
-                        if (cJSON_IsTrue(blink)) {
-                             for(int k=0; k<3; k++) {
-                                gpio_set_level(CONNECTION_LED_PIN, 1); vTaskDelay(pdMS_TO_TICKS(200));
-                                gpio_set_level(CONNECTION_LED_PIN, 0); vTaskDelay(pdMS_TO_TICKS(200));
-                            }
-                        }
-                        cJSON_Delete(root);
-                    }
-                }
-                free(buf);
-            }
-        }
+    // (Optional: Dein Debug-Log von vorhin hier behalten wenn gewünscht)
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "HTTP Request failed: %s", esp_err_to_name(err));
     }
     esp_http_client_cleanup(client);
 }
@@ -164,7 +147,8 @@ void broadcast_all() {
         
         char origin[32];
         if (r.client_ip == 0) strcpy(origin, "Master ESP");
-        else snprintf(origin, sizeof(origin), "Client IP: ...%d", (int)(r.client_ip >> 24)); 
+        // NEU: Anzeige der ID statt IP
+        else snprintf(origin, sizeof(origin), "Client ID: %04lX", (unsigned long)(r.client_ip & 0xFFFF)); 
         cJSON_AddStringToObject(item, "origin", origin);
         
         cJSON_AddItemToArray(arr, item);
@@ -197,26 +181,50 @@ extern "C" void app_main(void) {
         nvs_flash_init();
     }
     
-    // VOR ALLEM ANDEREN: Zeit laden!
+    uint8_t mac[6];
+    esp_read_mac(mac, ESP_MAC_WIFI_STA); 
+
+    // FNV-1a Hash Algorithmus: Mixt alle 6 Bytes der MAC in einen 32-Bit Wert
+    uint32_t hash = 2166136261u; // FNV Offset Basis
+    for (int i = 0; i < 6; i++) {
+        hash ^= mac[i];
+        hash *= 16777619u;   // FNV Prime
+    }
+    my_client_id = hash;
+
+    // Murphys Law: Auch ein Hash kann theoretisch 0 sein
+    if (my_client_id == 0) my_client_id = 1;
+
+    ESP_LOGI(TAG, "Client ID (Hash aus MAC): %lu", (unsigned long)my_client_id);
+    
     load_startup_time();
 
     game_mutex = xSemaphoreCreateMutex();
     init_gpios();
     esp_netif_init();
     esp_event_loop_create_default();
+    
+    // ... Rest des Codes (setup_network etc.) ...
     setup_network();
 
     if (is_master) {
         init_master_robots(); 
         init_webserver(); 
-        init_udp_sync(); 
+        // init_udp_sync(); // Ist ja deaktiviert
     }
-
+    
+    // ... dein Loop ...
     last_loop_time = esp_timer_get_time();
+    // ...
+    // Hier musst du natürlich deinen Loop Code wieder einfügen oder den bestehenden lassen
+    // Der Code oben ersetzt nur den Initialisierungsteil
+    
+    // Damit der Compiler nicht meckert, hier der Loop-Start Dummy (du hast ihn ja im Original):
     int64_t broadcast_timer = 0;
     int64_t ping_timer = 0;
 
     while(1) {
+        // ... dein Loop Code 1:1 von vorher ...
         int64_t now = esp_timer_get_time();
         int64_t delta_us = now - last_loop_time;
         last_loop_time = now;
@@ -230,16 +238,33 @@ extern "C" void app_main(void) {
             
             if (!global_paused && global_game_time_ms > 0) {
                 global_game_time_ms -= delta_ms;
-                if(global_game_time_ms < 0) global_game_time_ms = 0;
+                // ÄNDERUNG: Wenn 0 erreicht, global pausieren
+                if(global_game_time_ms <= 0) {
+                    global_game_time_ms = 0;
+                    global_paused = true; 
+                    ESP_LOGI(TAG, "Global Time abgelaufen -> Auto-Pause");
+                }
             }
 
             for (auto &rob : robots) {
                 if (!global_paused && rob.is_running && rob.time_left_ms > 0) {
                     rob.time_left_ms -= delta_ms;
-                    if(rob.time_left_ms < 0) rob.time_left_ms = 0;
+                    // ÄNDERUNG: Wenn Roboter-Zeit 0 erreicht, Roboter stoppen
+                    if(rob.time_left_ms <= 0) {
+                        rob.time_left_ms = 0;
+                        rob.is_running = false;
+                        // Optional: Roboter-Namen loggen, falls vorhanden
+                        ESP_LOGI(TAG, "Roboter ID %lu Zeit abgelaufen -> Stop", (unsigned long)rob.id);
+                    }
                 }
                 
-                if (rob.client_ip == 0) {
+                // HIER WICHTIG: Die Logic prüft auf 0, aber wir nutzen ja jetzt IDs.
+                // Da ID 0 "Master ESP" bedeutet (siehe broadcast_all Änderung vorhin),
+                // müssen wir sicherstellen, dass wir beim Master die ID Logik sauber haben.
+                // Wenn wir "is_master" sind, haben wir keine ID über URL bekommen, sondern sind lokal.
+                
+                // Deine Logik für Master-interne Roboter (Pin Index check):
+                if (rob.client_ip == 0) { // Master Roboter hat id 0 
                     rob.last_seen = now; 
                     if (rob.is_running && !global_paused) { 
                         if (rob.pin_index == 0 && p1 > 0) rob.pieces += p1;
@@ -257,6 +282,7 @@ extern "C" void app_main(void) {
             gpio_set_level(PAUSE_LED_PIN, global_paused ? 1 : 0);
 
         } else {
+            // Client Logic
             for (int i=0; i < p1; i++) send_to_master(0, false);
             for (int i=0; i < p2; i++) send_to_master(1, false);
             

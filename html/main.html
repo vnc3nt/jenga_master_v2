@@ -7,9 +7,10 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <div id="connectionBanner"></div>
     <div id="app">
         <div id="mainPage" class="container">
-            
+            <div id="espStatusGrid" class="esp-status-grid"></div>
             <div class="header-tools">
                 <button id="themeToggle" class="icon-btn">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
@@ -29,19 +30,21 @@
             </div>
 
             <div class="global-controls-section">
-                <div id="globalTimeDisplay" class="time-display" onclick="tryOpenGlobalTimeModal()">00:00</div>
-                
-                <div class="global-buttons">
-                    <button id="globalResetBtn" class="btn btn-reset" title="Neustart / Speichern">
+                <div class="global-controls-row">
+                    
+                    <button id="globalResetBtn" class="btn btn-reset btn-global-icon" title="Neustart / Speichern">
                         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
                             <path d="M3 3v5h5"></path>
                         </svg>
                     </button>
 
-                    <button id="globalPlayBtn" class="btn btn-primary" title="Start / Pause">
+                    <div id="globalTimeDisplay" class="time-display" onclick="tryOpenGlobalTimeModal()">00:00</div>
+                    
+                    <button id="globalPlayBtn" class="btn btn-primary btn-global-icon" title="Start / Pause">
                         <svg width="44" height="44" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
                     </button>
+
                 </div>
             </div>
 
