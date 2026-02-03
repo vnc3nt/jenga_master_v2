@@ -24,5 +24,5 @@ direct_dependencies:
 - idf
 - protocol_examples_common
 manifest_hash: b8c2e1b168498a9a46a498130228ffb6b120d4dcfa1f3a52f602fc91e0c1f760
-target: esp32
+target: esp32s3
 version: 2.0.0

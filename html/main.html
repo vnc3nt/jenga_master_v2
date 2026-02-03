@@ -121,6 +121,35 @@
             </div>
         </div>
 
+        <div id="editModal" class="modal-overlay">
+            <div class="modal">
+                <h3>Eintrag bearbeiten</h3>
+                <div class="modal-content">
+                    <input type="hidden" id="editId">
+                    
+                    <label>Team Name</label>
+                    <input type="text" id="editName" class="robot-name-input" style="width:100%; margin-bottom:1rem; color:var(--text);">
+                    
+                    <label>Steine (Score)</label>
+                    <div class="count-controls" style="margin-bottom:1rem;">
+                        <button class="btn-minus" onclick="adjEditScore(-1)">-</button>
+                        <span id="editScoreDisplay" style="font-size:1.5rem; font-weight:bold; width:50px; text-align:center;">0</span>
+                        <button class="btn-plus" onclick="adjEditScore(1)">+</button>
+                    </div>
+
+                    <label>Gesamtzeit (Minuten)</label>
+                    <input type="number" id="editTimeMin" class="robot-name-input" style="width:100%; color:var(--text);" placeholder="Minuten">
+                </div>
+                <div class="modal-actions">
+                    <button id="btnEditCancel" class="btn btn-secondary">Abbrechen</button>
+                    <button id="btnEditSave" class="btn btn-primary">Speichern</button>
+                </div>
+                <div style="margin-top:1rem; text-align:center;">
+                    <button id="btnEditDelete" class="btn" style="color:var(--danger); background:none; border:none; text-decoration:underline;">Eintrag löschen</button>
+                </div>
+            </div>
+        </div>
+
     </div>
     <script src="main.js"></script>
 </body>

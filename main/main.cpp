@@ -169,6 +169,8 @@ void broadcast_all() {
     cJSON *lb_arr = cJSON_CreateArray();
     for(const auto &entry : leaderboard) {
         cJSON *e = cJSON_CreateObject();
+        
+        cJSON_AddNumberToObject(e, "id", entry.entry_id); 
         cJSON_AddStringToObject(e, "name", entry.team_name);
         cJSON_AddNumberToObject(e, "pieces", entry.moves);
         cJSON_AddNumberToObject(e, "total_time", (double)entry.total_time_ms); 

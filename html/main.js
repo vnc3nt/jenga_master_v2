@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const viewToggle = document.getElementById('viewToggle');
     const leaderboardView = document.getElementById('leaderboardView');
     const leaderboardList = document.getElementById('leaderboardList');
-    const filterMeanCheckbox = document.getElementById('filterMean');
+    // ENTFERNT: const filterMeanCheckbox = document.getElementById('filterMean');
     const deleteAllBtn = document.getElementById('deleteAllBtn');
     
     const timeModal = document.getElementById('timeModal');
@@ -64,13 +64,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    filterMeanCheckbox.addEventListener('change', renderLeaderboard);
+    // ENTFERNT: filterMeanCheckbox.addEventListener('change', renderLeaderboard);
+
     deleteAllBtn.addEventListener('click', () => {
         if(confirm("Alle Daten unwiderruflich löschen?")) socket.send(JSON.stringify({cmd: "delete_all"}));
     });
 
-    rangeMin.addEventListener('input', updateFilter);
-    rangeMax.addEventListener('input', updateFilter);
+    // Neue Filter Event Listener
+    if(rangeMin && rangeMax) {
+        rangeMin.addEventListener('input', updateFilter);
+        rangeMax.addEventListener('input', updateFilter);
+    }
     modeRadios.forEach(r => r.addEventListener('change', () => renderLeaderboard()));
 
     // --- GAME LOOP ---
@@ -81,19 +85,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const timeSinceLastMsg = now - lastHeartbeat;
 
         if (timeSinceLastMsg > 10000) {
-            // > 10 Sekunden: Rot
             if (banner.className !== 'error') {
                 banner.textContent = "Verbindung verloren. Versuche reconnect...";
                 banner.className = 'error';
             }
         } else if (timeSinceLastMsg > 3000) {
-            // > 3 Sekunden: Orange
             if (banner.className !== 'warning') {
                 banner.textContent = "Verbindung instabil";
                 banner.className = 'warning';
             }
         } else {
-            // Alles okay: Ausblenden
             if (banner.className !== '') {
                 banner.className = '';
             }
@@ -121,15 +122,75 @@ document.addEventListener('DOMContentLoaded', () => {
         if(isGlobalPaused) globalTimeDisplay.classList.add('editable');
         else globalTimeDisplay.classList.remove('editable');
 
-        // Client Side Prediction Robots (Visuell)
-        if(!isGlobalPaused) {
-             robots.forEach(r => {
-                if (r.running && r.time_left > 0) {
-                     // Nur visuelles Update, genauer Sync kommt vom Server
-                }
-            });
-        }
     }, 100);
+
+    // --- EDIT MODAL LOGIC ---
+    const editModal = document.getElementById('editModal');
+    const editIdInput = document.getElementById('editId');
+    const editNameInput = document.getElementById('editName');
+    const editScoreDisplay = document.getElementById('editScoreDisplay');
+    const editTimeInput = document.getElementById('editTimeMin');
+    let currentEditScore = 0;
+
+    function openEditModal(entry) {
+        // Modal anzeigen
+        editModal.classList.add('active');
+        
+        // Werte füllen
+        editIdInput.value = entry.id;
+        editNameInput.value = entry.name;
+        currentEditScore = entry.score;
+        editScoreDisplay.textContent = currentEditScore;
+        
+        // Zeit in Minuten umrechnen
+        if (entry.time) {
+            editTimeInput.value = Math.floor(entry.time / 60000);
+        } else {
+            editTimeInput.value = 5; // Default
+        }
+    }
+
+    // Globale Funktion für Buttons im Modal
+    window.adjEditScore = (delta) => {
+        currentEditScore += delta;
+        if(currentEditScore < 0) currentEditScore = 0;
+        editScoreDisplay.textContent = currentEditScore;
+    };
+
+    document.getElementById('btnEditCancel').onclick = () => {
+        editModal.classList.remove('active');
+    };
+
+    document.getElementById('btnEditSave').onclick = () => {
+        const id = parseInt(editIdInput.value);
+        const name = editNameInput.value;
+        const timeMs = parseInt(editTimeInput.value) * 60000;
+
+        if (!name) {
+            alert("Name darf nicht leer sein");
+            return;
+        }
+
+        socket.send(JSON.stringify({
+            cmd: "edit_lb",
+            id: id,
+            name: name,
+            pieces: currentEditScore,
+            total_time: timeMs
+        }));
+
+        editModal.classList.remove('active');
+    };
+    
+    document.getElementById('btnEditDelete').onclick = () => {
+        if(confirm("Diesen Eintrag wirklich löschen?")) {
+            socket.send(JSON.stringify({
+                cmd: "delete_lb_entry",
+                id: parseInt(editIdInput.value)
+            }));
+            editModal.classList.remove('active');
+        }
+    };
 
     // --- WEBSOCKET ---
     function initWebSocket() {
@@ -138,14 +199,12 @@ document.addEventListener('DOMContentLoaded', () => {
         
         socket.onopen = () => {
             console.log("WebSocket Verbunden");
-            lastHeartbeat = Date.now(); // Reset bei Verbindung
+            lastHeartbeat = Date.now(); 
         };        
 
         socket.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
-                
-                // WICHTIG: Nur Heartbeat updaten, NICHT lastUpdate!
                 lastHeartbeat = Date.now();
 
                 // 1. Global State
@@ -153,7 +212,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     isGlobalPaused = data.global_paused;
                     
                     globalPlayBtn.innerHTML = isGlobalPaused ? ICON_PLAY : ICON_PAUSE;
-                    // Button ist immer Orange (Primary), nur Icon wechselt
                     globalPlayBtn.className = "btn btn-primary btn-global-icon";
                     
                     globalResetBtn.disabled = !isGlobalPaused;
@@ -162,7 +220,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // 2. Global Time
                 if (typeof data.global_time !== 'undefined') {
-                    // Sync nur wenn Differenz zu groß (>500ms)
                     if (Math.abs(globalTimeMs - data.global_time) > 500) {
                         globalTimeMs = data.global_time;
                         globalTimeDisplay.textContent = formatTime(globalTimeMs / 1000);
@@ -173,8 +230,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (data.robots) {
                     robots = data.robots;
                     if (!viewToggle.checked) renderRobots(robots);
-                    
-                    // ESP-Status-Icons aktualisieren
                     updateEspIcons(robots); 
                 }
 
@@ -202,36 +257,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function areAllNamesValid() {
         if (robots.length === 0) return false; 
-        // Prüft, ob jedes Feld einen Wert hat und dieser nicht nur aus Leerzeichen besteht
         return robots.every(r => r.name && r.name.trim().length > 0);
     }
 
-    // --- BUTTON STATE UPDATE (Logik komplett überarbeitet) ---
+    // --- BUTTON STATE UPDATE ---
     function updateButtonsState() {
         const namesValid = areAllNamesValid();
         const errorMsg = "Bitte erst für alle Teams einen Namen eintragen!";
 
-        // 1. GLOBAL PLAY BUTTON
         if (!namesValid) {
-            // FALL A: Namen fehlen -> Button ausgegraut + Hinweis
             globalPlayBtn.disabled = true;
-            globalPlayBtn.title = errorMsg; // <--- Dein gewünschter Hover-Hinweis
+            globalPlayBtn.title = errorMsg; 
         } else {
-            // FALL B: Alles okay -> Button klickbar
             globalPlayBtn.disabled = false;
             globalPlayBtn.title = isGlobalPaused ? "Spiel starten" : "Spiel pausieren";
         }
 
-        // 2. ROBOT PLAY BUTTONS
         const robotBtns = document.querySelectorAll('.robot-controls .btn-play-small');
         robotBtns.forEach(btn => {
             if (!namesValid) {
-                // FALL A: Namen fehlen -> Auch hier ausgegraut + Hinweis
                 btn.disabled = true;
                 btn.title = errorMsg;
             } else {
-                // FALL B: Namen da -> Verhalten hängt vom Global-Status ab
-                // Wenn Global Pause ist, sind die Roboter gesperrt (man muss erst global starten)
                 btn.disabled = isGlobalPaused;
                 btn.title = isGlobalPaused ? "Zuerst global starten" : "Start / Stop";
             }
@@ -243,7 +290,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const grid = document.getElementById('robotGrid');
         const currentIds = list.map(r => r.id);
         
-        // Alte entfernen
         Array.from(grid.children).forEach(child => {
             if (!currentIds.includes(parseInt(child.dataset.id))) child.remove();
         });
@@ -259,7 +305,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const pct = Math.min((rob.pieces / 36) * 100, 100);
             const btnIcon = rob.running ? ICON_PAUSE_SMALL : ICON_PLAY_SMALL;
             
-            // VALIDIERUNG: Ist der Name leer?
             const isNameInvalid = !rob.name || rob.name.trim().length === 0;
             const nameInputClass = isNameInvalid ? "robot-name-input error" : "robot-name-input";
 
@@ -267,7 +312,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 card = document.createElement('div');
                 card.className = 'robot-card';
                 card.dataset.id = rob.id;
-                // HTML Struktur
                 card.innerHTML = `
                     <div class="robot-header">
                         <div class="status-dot-wrapper">
@@ -294,14 +338,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 `;
                 grid.appendChild(card);
             } else {
-                // UPDATE EXISTING
                 card.querySelector('.status-dot').className = `status-dot ${statusClass}`;
                 card.querySelector('.status-tooltip').textContent = rob.origin || "Unknown";
                 
                 const inp = card.querySelector('.robot-name-input');
                 if (document.activeElement !== inp) inp.value = rob.name;
-                
-                // Klasse aktualisieren (Fehler rot / normal)
                 inp.className = nameInputClass;
 
                 const btn = card.querySelector('.btn-play-small');
@@ -326,33 +367,28 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // 1. FILTER: Zeitbereich (Slider Werte sind in Sekunden)
-        const minSec = parseInt(rangeMin.value); // Z.B. 180 (3 min)
-        const maxSec = parseInt(rangeMax.value); // Z.B. 300 (5 min)
+        const minSec = parseInt(rangeMin.value); 
+        const maxSec = parseInt(rangeMax.value); 
 
         let filtered = leaderboardData.filter(e => {
-            // e.total_time ist in ms!
             const tSec = Math.round(e.total_time / 1000); 
-            // Fallback: Wenn total_time 0 ist (alte Daten), zeigen wir sie immer oder nie? 
-            // Zeigen wir sie an, wenn Min auf 0 steht.
             if (!e.total_time) return minSec === 0;
             return tSec >= minSec && tSec <= maxSec;
         });
 
-        // 2. MODUS (Switch)
         const mode = Array.from(modeRadios).find(r => r.checked).value;
         let displayData = [];
 
         if (mode === 'all') {
             displayData = filtered.map(e => ({ 
+                id: e.id,
                 name: e.name, 
                 score: e.pieces, 
                 time: e.total_time,
                 meta: '' 
             }));
-        } 
+        }
         else {
-            // Gruppieren
             const groups = {};
             filtered.forEach(e => {
                 const n = e.name || "Unbekannt";
@@ -376,17 +412,20 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Sortieren
         displayData.sort((a,b) => b.score - a.score);
 
-        // HTML Generieren
         const ul = document.createElement('ul');
         ul.className = 'lb-list';
         displayData.forEach((e, i) => {
             const li = document.createElement('li');
             li.className = 'lb-item';
+
+            if (mode === 'all') {
+                li.style.cursor = 'pointer';
+                li.title = "Klicken zum Bearbeiten";
+                li.onclick = () => openEditModal(e);
+            }
             
-            // Formatierte Rundenzeit für "Alle" Ansicht
             let timeInfo = "";
             if (mode === 'all' && e.time) {
                 const min = Math.floor(e.time/60000);
@@ -406,14 +445,11 @@ document.addEventListener('DOMContentLoaded', () => {
         list.appendChild(ul);
     }
 
-    // --- RENDER ESP-STATUS_ICONS ---
+    // --- RENDER ESP ICONS ---
     function updateEspIcons(robotList) {
         const grid = document.getElementById('espStatusGrid');
         if (!grid) return;
 
-        // 1. Gruppieren nach Gerät (Origin)
-        // Master und Clients haben jeweils eindeutige Origins.
-        // Wir prüfen, ob IRGENDEIN Roboter dieses Geräts online ist.
         const devices = {};
         robotList.forEach(r => {
             if (!devices[r.origin]) {
@@ -425,21 +461,17 @@ document.addEventListener('DOMContentLoaded', () => {
             if (r.online) devices[r.origin].online = true;
         });
 
-        // 2. Filtern und Sortieren
-        // Master ist immer dabei. Clients nur, wenn online.
         const activeOrigins = Object.keys(devices).filter(k => {
             const d = devices[k];
             return d.isMaster || d.online;
         }).sort((a, b) => {
-            // Master immer zuerst
             if (devices[a].isMaster) return -1;
             if (devices[b].isMaster) return 1;
             return a.localeCompare(b);
         });
-        // 3. Auf 6 limitieren (2 Zeilen a 3 Spalten)
+
         const toShow = activeOrigins.slice(0, 6);
 
-        // 4. SVG Definition
         const svgIcon = `
         <svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="7" y="2" width="10" height="20" rx="2" />
@@ -453,18 +485,15 @@ document.addEventListener('DOMContentLoaded', () => {
         </svg>
         `;
 
-        // 5. HTML generieren
         grid.innerHTML = toShow.map(() => 
             `<div class="esp-icon active" title="Verbundenes ESP32 Modul">${svgIcon}</div>`
         ).join('');
     }
 
     function updateFilter(e) {
-        // Verhindern, dass Min > Max
         let min = parseInt(rangeMin.value);
         let max = parseInt(rangeMax.value);
         
-        // "Magnet" Effekt: Schiebt den anderen weg, wenn sie sich treffen
         if (e.target.id === 'rangeMin' && min > max - 10) {
             rangeMin.value = max - 10;
             min = max - 10;
@@ -474,20 +503,15 @@ document.addEventListener('DOMContentLoaded', () => {
             max = min + 10;
         }
 
-        // Label Update
         const formatM = (secs) => {
             const m = Math.floor(secs / 60);
             const s = secs % 60;
             return `${m}:${s.toString().padStart(2,'0')}`;
         };
-        timeRangeVal.textContent = `${formatM(min)} - ${formatM(max)} min`; // Slider sind in Sekunden (0-600)
+        timeRangeVal.textContent = `${formatM(min)} - ${formatM(max)} min`;
         
         renderLeaderboard();
     }
-
-
-
-
 
     // --- ACTIONS ---
     window.locateRobot = (id) => socket.send(JSON.stringify({cmd: "locate", id}));
@@ -495,7 +519,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.toggleRobot = (id) => socket.send(JSON.stringify({cmd: "toggle_robot", id}));
     window.adjScore = (id, val) => socket.send(JSON.stringify({cmd: "adj_score", id, val}));
     
-    // TIME EDIT (PRE-FILL VALUE)
+    // TIME EDIT
     window.tryOpenGlobalTimeModal = function() {
         if(isGlobalPaused) {
             const secTotal = Math.floor(globalTimeMs / 1000);
@@ -505,8 +529,6 @@ document.addEventListener('DOMContentLoaded', () => {
             inputSec.value = s.toString().padStart(2, '0');
             
             timeModal.classList.add('active');
-        } else {
-            // Feedback optional
         }
     };
     modalCancelBtn.onclick = () => timeModal.classList.remove('active');
@@ -520,12 +542,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // GLOBAL BUTTONS
     globalPlayBtn.onclick = () => {
-        // KEIN Optimistic UI mehr hier! Wir warten auf Server.
         socket.send(JSON.stringify({cmd: "toggle_global"}));
     };
     
     // RESET LOGIK
-    // HIER WAR DER FEHLER: resetModal ist oben schon definiert (const), darf nicht neu zugewiesen werden.
     globalResetBtn.onclick = () => resetModal.classList.add('active');
     
     btnResetSave.onclick = () => {
@@ -540,3 +560,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
     initWebSocket();
 });
+

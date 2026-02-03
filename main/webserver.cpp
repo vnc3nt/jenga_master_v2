@@ -9,6 +9,7 @@
 #include "nvs_flash.h"
 #include <time.h>
 #include <arpa/inet.h>
+#include <algorithm>
 
 static const char *TAG = "WEB";
 static httpd_handle_t server = NULL;
@@ -294,14 +295,19 @@ esp_err_t ws_handler(httpd_req_t *req) {
                     if (should_save) {
                         int64_t now_ts = (int64_t)time(NULL); 
                         for(const auto &r : robots) {
-                            if(r.pieces > 0 && strlen(r.name) > 0) {
+                            // ÄNDERUNG: "r.pieces > 0" entfernt. Nur Name muss da sein.
+                            if(strlen(r.name) > 0) { 
                                 LeaderboardEntry entry;
                                 strncpy(entry.team_name, r.name, sizeof(entry.team_name)-1);
                                 entry.team_name[31] = '\0';
                                 entry.moves = r.pieces;
                                 entry.time_ms = 0; 
                                 entry.timestamp = now_ts;
-                                entry.total_time_ms = global_game_time_ms; // NEU: Gesamtzeit speichern
+                                entry.total_time_ms = global_game_time_ms;
+                                
+                                // NEU: Eindeutige ID generieren (Zufall + Zeitfaktor für Uniqueness)
+                                entry.entry_id = esp_random() + (uint32_t)now_ts; 
+                                
                                 leaderboard.push_back(entry);
                             }
                         }
@@ -356,6 +362,58 @@ esp_err_t ws_handler(httpd_req_t *req) {
                         xSemaphoreGive(game_mutex);
                     }
                 }
+                else if (strcmp(cmd->valuestring, "delete_lb_entry") == 0) {
+                    cJSON *jId = cJSON_GetObjectItem(root, "id");
+                    if(cJSON_IsNumber(jId)) {
+                        xSemaphoreTake(game_mutex, portMAX_DELAY);
+                        uint32_t targetId = (uint32_t)jId->valuedouble;
+                        
+                        // Erase-Remove Idiom für Vector
+                        auto it = std::remove_if(leaderboard.begin(), leaderboard.end(), 
+                            [targetId](const LeaderboardEntry& e){ return e.entry_id == targetId; });
+                            
+                        if (it != leaderboard.end()) {
+                            leaderboard.erase(it, leaderboard.end());
+                            save_leaderboard_nvs(); // Speichern
+                        }
+                        xSemaphoreGive(game_mutex);
+                    }
+                }
+                else if (strcmp(cmd->valuestring, "edit_lb") == 0) {
+                    // Wir erwarten: id, name, pieces, time (optional)
+                    cJSON *jId = cJSON_GetObjectItem(root, "id");
+                    cJSON *jName = cJSON_GetObjectItem(root, "name");
+                    cJSON *jPieces = cJSON_GetObjectItem(root, "pieces");
+                    
+                    if (cJSON_IsNumber(jId) && cJSON_IsString(jName) && cJSON_IsNumber(jPieces)) {
+                        xSemaphoreTake(game_mutex, portMAX_DELAY);
+                        uint32_t targetId = (uint32_t)jId->valuedouble;
+                        
+                        for(auto &entry : leaderboard) {
+                            if(entry.entry_id == targetId) {
+                                // Werte updaten
+                                strncpy(entry.team_name, jName->valuestring, sizeof(entry.team_name)-1);
+                                entry.team_name[31] = '\0';
+                                entry.moves = jPieces->valueint;
+                                
+                                // Optional: Zeit ändern
+                                cJSON *jTime = cJSON_GetObjectItem(root, "total_time");
+                                if(cJSON_IsNumber(jTime)) {
+                                    entry.total_time_ms = (int64_t)jTime->valuedouble;
+                                }
+                                break;
+                            }
+                        }
+                        // Speichern nicht vergessen!
+                        save_leaderboard_nvs();
+                        xSemaphoreGive(game_mutex);
+                        
+                        // Broadcast triggern (damit alle Clients das Update sehen)
+                        // Hinweis: Da broadcast_all() meist im Loop läuft, reicht das Speichern. 
+                        // Falls du sofortiges Feedback willst, könntest du hier broadcast_all() rufen, 
+                        // aber das ist in webserver.cpp evtl. nicht sichtbar. Der Loop macht das im nächsten Zyklus.
+                    }
+                }
                 else if (strcmp(cmd->valuestring, "delete_all") == 0) {
                     xSemaphoreTake(game_mutex, portMAX_DELAY);
                     leaderboard.clear();
@@ -382,14 +440,73 @@ void init_webserver() {
     config.max_open_sockets = 7;
 
     if (httpd_start(&server, &config) == ESP_OK) {
-        httpd_uri_t u_idx = { "/", HTTP_GET, index_handler, NULL }; httpd_register_uri_handler(server, &u_idx);
-        httpd_uri_t u_css = { "/style.css", HTTP_GET, style_handler, NULL }; httpd_register_uri_handler(server, &u_css);
-        httpd_uri_t u_js = { "/main.js", HTTP_GET, js_handler, NULL }; httpd_register_uri_handler(server, &u_js);
-        httpd_uri_t u_pulse = { "/api/pulse", HTTP_GET, api_pulse_handler, NULL }; httpd_register_uri_handler(server, &u_pulse);
-        httpd_uri_t u_ping = { "/api/ping", HTTP_GET, api_ping_handler, NULL }; httpd_register_uri_handler(server, &u_ping);
-        httpd_uri_t u_ws = { "/ws", HTTP_GET, ws_handler, NULL };
-        httpd_uri_t u_favicon = { "/favicon.ico", HTTP_GET, favicon_handler, NULL }; httpd_register_uri_handler(server, &u_favicon);
-        u_ws.is_websocket = true; u_ws.handle_ws_control_frames = true; httpd_register_uri_handler(server, &u_ws);
+        
+        // Index HTML
+        httpd_uri_t u_idx = {
+            .uri = "/",
+            .method = HTTP_GET,
+            .handler = index_handler,
+            .user_ctx = NULL
+        };
+        httpd_register_uri_handler(server, &u_idx);
+        
+        // CSS
+        httpd_uri_t u_css = {
+            .uri = "/style.css",
+            .method = HTTP_GET,
+            .handler = style_handler,
+            .user_ctx = NULL
+        };
+        httpd_register_uri_handler(server, &u_css);
+        
+        // JS
+        httpd_uri_t u_js = {
+            .uri = "/main.js",
+            .method = HTTP_GET,
+            .handler = js_handler,
+            .user_ctx = NULL
+        };
+        httpd_register_uri_handler(server, &u_js);
+        
+        // API Pulse
+        httpd_uri_t u_pulse = {
+            .uri = "/api/pulse",
+            .method = HTTP_GET,
+            .handler = api_pulse_handler,
+            .user_ctx = NULL
+        };
+        httpd_register_uri_handler(server, &u_pulse);
+        
+        // API Ping
+        httpd_uri_t u_ping = {
+            .uri = "/api/ping",
+            .method = HTTP_GET,
+            .handler = api_ping_handler,
+            .user_ctx = NULL
+        };
+        httpd_register_uri_handler(server, &u_ping);
+
+        // Favicon
+        httpd_uri_t u_favicon = {
+            .uri = "/favicon.ico",
+            .method = HTTP_GET,
+            .handler = favicon_handler,
+            .user_ctx = NULL
+        };
+        httpd_register_uri_handler(server, &u_favicon);
+
+        // WebSocket
+        httpd_uri_t u_ws = {
+            .uri = "/ws",
+            .method = HTTP_GET,
+            .handler = ws_handler,
+            .user_ctx = NULL,
+            .is_websocket = true,
+            .handle_ws_control_frames = true,
+            .supported_subprotocol = NULL
+        };
+        httpd_register_uri_handler(server, &u_ws);
+        
         ESP_LOGI(TAG, "Webserver gestartet");
     }
 }
