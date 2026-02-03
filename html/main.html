@@ -53,10 +53,40 @@
             </div>
 
             <div id="leaderboardView" class="hidden">
-                <div style="text-align: center; margin-bottom: 1rem;">
-                    <label><input type="checkbox" id="filterMean"> Mittelwert anzeigen</label>
+                
+                <div class="filter-card">
+                    
+                    <div class="filter-row">
+                        <div class="switch-toggle-3">
+                            <input type="radio" id="modeAll" name="lbMode" value="all" checked>
+                            <label for="modeAll">Alle</label>
+                            
+                            <input type="radio" id="modeBest" name="lbMode" value="best">
+                            <label for="modeBest">Beste</label>
+                            
+                            <input type="radio" id="modeAvg" name="lbMode" value="avg">
+                            <label for="modeAvg">Ø</label>
+                            
+                            <div class="toggle-glider"></div>
+                        </div>
+                    </div>
+
+                    <div class="filter-row" style="margin-top: 1.5rem; flex-direction: column; align-items: stretch;">
+                        <div class="slider-labels-top">
+                            <span>Filter: Rundenzeit</span>
+                            <span id="timeRangeVal" style="color:var(--primary); font-weight:bold;">0 - 10 min</span>
+                        </div>
+                        <div class="dual-range-container">
+                            <div class="range-track"></div>
+                            <input type="range" id="rangeMin" min="0" max="600" value="0">
+                            <input type="range" id="rangeMax" min="0" max="600" value="600">
+                        </div>
+                    </div>
+
                 </div>
+
                 <div id="leaderboardList"></div>
+                
                 <div style="margin-top: 2rem;">
                     <button id="deleteAllBtn" class="btn btn-secondary" style="width: 100%; color: var(--danger);">Alle Daten löschen</button>
                 </div>

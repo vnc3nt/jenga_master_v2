@@ -39,6 +39,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnResetNoSave = document.getElementById('btnResetNoSave');
     const btnResetCancel = document.getElementById('btnResetCancel');
 
+    const rangeMin = document.getElementById('rangeMin');
+    const rangeMax = document.getElementById('rangeMax');
+    const timeRangeVal = document.getElementById('timeRangeVal');
+    const modeRadios = document.getElementsByName('lbMode');
+
     // --- INITIALISIERUNG ---
     if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark');
     document.getElementById('themeToggle').addEventListener('click', () => {
@@ -63,6 +68,10 @@ document.addEventListener('DOMContentLoaded', () => {
     deleteAllBtn.addEventListener('click', () => {
         if(confirm("Alle Daten unwiderruflich löschen?")) socket.send(JSON.stringify({cmd: "delete_all"}));
     });
+
+    rangeMin.addEventListener('input', updateFilter);
+    rangeMax.addEventListener('input', updateFilter);
+    modeRadios.forEach(r => r.addEventListener('change', () => renderLeaderboard()));
 
     // --- GAME LOOP ---
     setInterval(() => {
@@ -311,37 +320,85 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderLeaderboard() {
         const list = document.getElementById('leaderboardList');
         list.innerHTML = "";
+        
         if(leaderboardData.length === 0) {
             list.innerHTML = "<div style='text-align:center; padding:2rem; color:#888;'>Keine Einträge</div>";
             return;
         }
+
+        // 1. FILTER: Zeitbereich (Slider Werte sind in Sekunden)
+        const minSec = parseInt(rangeMin.value); // Z.B. 180 (3 min)
+        const maxSec = parseInt(rangeMax.value); // Z.B. 300 (5 min)
+
+        let filtered = leaderboardData.filter(e => {
+            // e.total_time ist in ms!
+            const tSec = Math.round(e.total_time / 1000); 
+            // Fallback: Wenn total_time 0 ist (alte Daten), zeigen wir sie immer oder nie? 
+            // Zeigen wir sie an, wenn Min auf 0 steht.
+            if (!e.total_time) return minSec === 0;
+            return tSec >= minSec && tSec <= maxSec;
+        });
+
+        // 2. MODUS (Switch)
+        const mode = Array.from(modeRadios).find(r => r.checked).value;
         let displayData = [];
-        const isMean = document.getElementById('filterMean').checked;
-        
-        if (isMean) {
+
+        if (mode === 'all') {
+            displayData = filtered.map(e => ({ 
+                name: e.name, 
+                score: e.pieces, 
+                time: e.total_time,
+                meta: '' 
+            }));
+        } 
+        else {
+            // Gruppieren
             const groups = {};
-            leaderboardData.forEach(e => {
+            filtered.forEach(e => {
                 const n = e.name || "Unbekannt";
                 if (!groups[n]) groups[n] = [];
                 groups[n].push(e.pieces);
             });
-            displayData = Object.keys(groups).map(n => {
-                const arr = groups[n];
-                const avg = arr.reduce((a,b)=>a+b,0) / arr.length;
-                return { name: n, score: avg.toFixed(1), attempts: arr.length, isMean: true };
-            }).sort((a,b) => b.score - a.score);
-        } else {
-            displayData = leaderboardData.map(e => ({ name: e.name, score: e.pieces, isMean: false }))
-                          .sort((a,b) => b.score - a.score);
+
+            if (mode === 'avg') {
+                displayData = Object.keys(groups).map(n => {
+                    const arr = groups[n];
+                    const avg = arr.reduce((a,b)=>a+b,0) / arr.length;
+                    return { name: n, score: avg.toFixed(1), meta: `Ø (${arr.length} Spiele)` };
+                });
+            } 
+            else if (mode === 'best') {
+                displayData = Object.keys(groups).map(n => {
+                    const arr = groups[n];
+                    const best = Math.max(...arr);
+                    return { name: n, score: best, meta: 'Highscore' };
+                });
+            }
         }
+
+        // Sortieren
+        displayData.sort((a,b) => b.score - a.score);
+
+        // HTML Generieren
         const ul = document.createElement('ul');
         ul.className = 'lb-list';
         displayData.forEach((e, i) => {
             const li = document.createElement('li');
             li.className = 'lb-item';
+            
+            // Formatierte Rundenzeit für "Alle" Ansicht
+            let timeInfo = "";
+            if (mode === 'all' && e.time) {
+                const min = Math.floor(e.time/60000);
+                timeInfo = `<span style="font-size:0.8em; color:var(--text-muted); margin-left:8px;">(${min} min)</span>`;
+            }
+
             li.innerHTML = `
                 <div class="lb-rank">#${i+1}</div>
-                <div class="lb-info"><div class="lb-name">${e.name}</div>${e.isMean?`<small>${e.attempts} Versuche</small>`:''}</div>
+                <div class="lb-info">
+                    <div class="lb-name">${e.name} ${timeInfo}</div>
+                    <small style="color:var(--text-muted);">${e.meta}</small>
+                </div>
                 <div class="lb-score">${e.score}</div>
             `;
             ul.appendChild(li);
@@ -401,6 +458,36 @@ document.addEventListener('DOMContentLoaded', () => {
             `<div class="esp-icon active" title="Verbundenes ESP32 Modul">${svgIcon}</div>`
         ).join('');
     }
+
+    function updateFilter(e) {
+        // Verhindern, dass Min > Max
+        let min = parseInt(rangeMin.value);
+        let max = parseInt(rangeMax.value);
+        
+        // "Magnet" Effekt: Schiebt den anderen weg, wenn sie sich treffen
+        if (e.target.id === 'rangeMin' && min > max - 10) {
+            rangeMin.value = max - 10;
+            min = max - 10;
+        }
+        if (e.target.id === 'rangeMax' && max < min + 10) {
+            rangeMax.value = min + 10;
+            max = min + 10;
+        }
+
+        // Label Update
+        const formatM = (secs) => {
+            const m = Math.floor(secs / 60);
+            const s = secs % 60;
+            return `${m}:${s.toString().padStart(2,'0')}`;
+        };
+        timeRangeVal.textContent = `${formatM(min)} - ${formatM(max)} min`; // Slider sind in Sekunden (0-600)
+        
+        renderLeaderboard();
+    }
+
+
+
+
 
     // --- ACTIONS ---
     window.locateRobot = (id) => socket.send(JSON.stringify({cmd: "locate", id}));

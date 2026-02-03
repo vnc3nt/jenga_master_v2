@@ -14,6 +14,9 @@ void init_webserver(void);
 // Diese Funktion muss in webserver.cpp implementiert sein!
 extern void ws_broadcast(const char* str);
 
+void load_leaderboard_nvs();
+void save_leaderboard_nvs();
+
 #endif
 
 

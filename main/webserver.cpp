@@ -35,6 +35,57 @@ void save_time_to_nvs(int64_t time_ms) {
     }
 }
 
+// --- NVS LEADERBOARD MANAGER ---
+void save_leaderboard_nvs() {
+    nvs_handle_t my_handle;
+    esp_err_t err = nvs_open("storage", NVS_READWRITE, &my_handle);
+    if (err == ESP_OK) {
+        // Wir speichern max 50 Einträge um NVS Überlauf zu verhindern
+        size_t count = leaderboard.size();
+        if (count > 50) count = 50; 
+        
+        // Da wir neuere Einträge hinten anfügen, nehmen wir die letzten 'count'
+        size_t start_idx = leaderboard.size() - count;
+        
+        size_t required_size = count * sizeof(LeaderboardEntry);
+        
+        // Kopie für den Speicher erstellen (flat array)
+        if (count > 0) {
+            nvs_set_blob(my_handle, "lb_data", &leaderboard[start_idx], required_size);
+        } else {
+            nvs_erase_key(my_handle, "lb_data");
+        }
+        
+        nvs_commit(my_handle);
+        nvs_close(my_handle);
+        ESP_LOGI(TAG, "Leaderboard (%d Einträge) in NVS gespeichert.", (int)count);
+    }
+}
+
+void load_leaderboard_nvs() {
+    nvs_handle_t my_handle;
+    esp_err_t err = nvs_open("storage", NVS_READONLY, &my_handle);
+    if (err == ESP_OK) {
+        size_t required_size = 0;
+        if (nvs_get_blob(my_handle, "lb_data", NULL, &required_size) == ESP_OK && required_size > 0) {
+            size_t count = required_size / sizeof(LeaderboardEntry);
+            LeaderboardEntry* buf = (LeaderboardEntry*) malloc(required_size);
+            
+            if (buf) {
+                if (nvs_get_blob(my_handle, "lb_data", buf, &required_size) == ESP_OK) {
+                    leaderboard.clear();
+                    for(size_t i=0; i<count; i++) {
+                        leaderboard.push_back(buf[i]);
+                    }
+                    ESP_LOGI(TAG, "Leaderboard (%d Einträge) aus NVS geladen.", (int)count);
+                }
+                free(buf);
+            }
+        }
+        nvs_close(my_handle);
+    }
+}
+
 uint32_t get_client_id_from_url(const char* query) {
     char val[16];
     if (httpd_query_key_value(query, "id", val, sizeof(val)) == ESP_OK) {
@@ -250,9 +301,11 @@ esp_err_t ws_handler(httpd_req_t *req) {
                                 entry.moves = r.pieces;
                                 entry.time_ms = 0; 
                                 entry.timestamp = now_ts;
+                                entry.total_time_ms = global_game_time_ms; // NEU: Gesamtzeit speichern
                                 leaderboard.push_back(entry);
                             }
                         }
+                        save_leaderboard_nvs();
                     }
                     int64_t start_time = load_time_from_nvs();
                     global_game_time_ms = start_time;

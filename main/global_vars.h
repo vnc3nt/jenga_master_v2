@@ -44,10 +44,11 @@
 
     struct LeaderboardEntry {
         char team_name[32];
-        int64_t time_ms;
-        int moves;
+        int64_t time_ms;      // Gebrauchte Zeit (optional, falls wir "Restzeit" speichern wollen)
+        int moves;            // Entfernte Steine
         uint32_t entry_id; 
-        int64_t timestamp; 
+        int64_t timestamp;
+        int64_t total_time_ms; 
     };
     extern std::vector<LeaderboardEntry> leaderboard;
 

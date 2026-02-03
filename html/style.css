@@ -368,3 +368,112 @@ input:checked + .slider .label-right { color: var(--text); }
 .esp-icon.active {
     color: var(--text);
 }
+
+/* =========================================
+   LEADERBOARD
+   ========================================= */
+/* FILTER CARD */
+.filter-card {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+.filter-row { display: flex; justify-content: center; align-items: center; }
+
+/* --- 3-WAY SWITCH --- */
+.switch-toggle-3 {
+    position: relative;
+    display: flex;
+    background: var(--border);
+    border-radius: 99px; /* Pill shape */
+    height: 40px;
+    width: 100%; max-width: 300px;
+    padding: 4px;
+}
+
+.switch-toggle-3 input { display: none; }
+
+.switch-toggle-3 label {
+    flex: 1;
+    text-align: center;
+    z-index: 2;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9rem;
+    line-height: 32px; /* Vertikal zentrieren */
+    color: var(--text-muted);
+    transition: color 0.3s;
+}
+
+.toggle-glider {
+    position: absolute;
+    height: 32px;
+    width: calc(33.33% - 6px); /* 1/3 der Breite minus Padding */
+    background: var(--card-bg);
+    border-radius: 99px;
+    z-index: 1;
+    transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+
+/* Glider Position Logic based on checked input */
+#modeAll:checked ~ .toggle-glider { transform: translateX(0); }
+#modeBest:checked ~ .toggle-glider { transform: translateX(100%); } /* ~100% relative to glider width is tough in CSS alone without fixed width, but lets try calc logic */
+/* Fix: Da Width dynamisch ist, nutzen wir % des Parents */
+#modeAll:checked ~ .toggle-glider { left: 4px; }
+#modeBest:checked ~ .toggle-glider { left: 33.33%; transform: translateX(2px); } /* Tweaking */
+#modeAvg:checked ~ .toggle-glider { left: 66.66%; transform: translateX(-2px); }
+
+/* Text Color Update */
+#modeAll:checked + label,
+#modeBest:checked + label,
+#modeAvg:checked + label { color: var(--text); }
+
+
+/* --- DUAL RANGE SLIDER --- */
+.dual-range-container {
+    position: relative;
+    width: 100%;
+    height: 40px;
+}
+.slider-labels-top {
+    display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.9rem;
+}
+.range-track {
+    position: absolute; top: 50%; left: 0; width: 100%; height: 6px;
+    background: var(--border); border-radius: 3px; transform: translateY(-50%);
+    z-index: 1;
+}
+
+/* Die Slider Inputs liegen übereinander */
+.dual-range-container input[type="range"] {
+    position: absolute; top: 50%; left: 0; width: 100%;
+    transform: translateY(-50%);
+    pointer-events: none; /* Klicks gehen durch */
+    appearance: none; -webkit-appearance: none;
+    background: none; /* Track unsichtbar machen, wir haben unseren eigenen */
+    z-index: 2;
+    margin: 0;
+}
+
+/* Der "Knubbel" (Thumb) muss klickbar sein */
+.dual-range-container input[type="range"]::-webkit-slider-thumb {
+    pointer-events: auto;
+    appearance: none; -webkit-appearance: none;
+    width: 24px; height: 24px;
+    background: var(--primary);
+    border: 2px solid white;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    cursor: grab;
+    z-index: 3;
+}
+/* Firefox support */
+.dual-range-container input[type="range"]::-moz-range-thumb {
+    pointer-events: auto;
+    width: 24px; height: 24px;
+    background: var(--primary); border: 2px solid white;
+    border-radius: 50%; cursor: grab; z-index: 3; border: none;
+}
