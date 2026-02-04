@@ -367,6 +367,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // 1. FILTER: Zeit
         const minSec = parseInt(rangeMin.value); 
         const maxSec = parseInt(rangeMax.value); 
 
@@ -376,6 +377,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return tSec >= minSec && tSec <= maxSec;
         });
 
+        // 2. FILTER: Modus
         const mode = Array.from(modeRadios).find(r => r.checked).value;
         let displayData = [];
 
@@ -412,20 +414,17 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
+        // Sortieren
         displayData.sort((a,b) => b.score - a.score);
 
+        // HTML Generieren
         const ul = document.createElement('ul');
         ul.className = 'lb-list';
+        
         displayData.forEach((e, i) => {
             const li = document.createElement('li');
             li.className = 'lb-item';
 
-            if (mode === 'all') {
-                li.style.cursor = 'pointer';
-                li.title = "Klicken zum Bearbeiten";
-                li.onclick = () => openEditModal(e);
-            }
-            
             let timeInfo = "";
             if (mode === 'all' && e.time) {
                 const min = Math.floor(e.time/60000);
@@ -440,6 +439,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
                 <div class="lb-score">${e.score}</div>
             `;
+
+            // EVENT LISTENER (Auf das gesamte Element)
+            if (mode === 'all') {
+                // Style direkt setzen, damit man sieht, dass es klickbar ist
+                li.style.cursor = 'pointer'; 
+                li.title = "Klicken zum Bearbeiten";
+                
+                // Event Listener auf das gesamte Listenelement
+                li.addEventListener('click', () => {
+                    console.log("Eintrag geklickt:", e); // Debugging
+                    openEditModal(e);
+                });
+            }
+
             ul.appendChild(li);
         });
         list.appendChild(ul);

@@ -294,7 +294,6 @@ input:checked + .slider .label-right { color: var(--text); }
     font-size: 0.85rem; font-weight: 800; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.5);
 }
 
-/* Modals */
 .leaderboard-container { background: transparent; }
 .lb-list { list-style: none; }
 .lb-item {
@@ -304,34 +303,6 @@ input:checked + .slider .label-right { color: var(--text); }
 }
 .lb-rank { font-size: 1.2rem; font-weight: bold; width: 40px; color: var(--primary); }
 .lb-info { flex: 1; } .lb-score { font-size: 1.5rem; font-weight: bold; }
-
-.modal {
-    display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%;
-    background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center;
-    backdrop-filter: blur(4px);
-}
-.modal.active { display: flex; }
-.modal-content {
-    background-color: var(--card-bg); padding: 2rem; border-radius: 20px;
-    width: 90%; max-width: 350px; text-align: center;
-    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2);
-}
-
-.time-input-wrapper { display: flex; justify-content: center; gap: 5px; margin: 2rem 0; align-items: center; }
-.time-input {
-    width: 90px; height: 90px; font-size: 3.5rem; text-align: center;
-    border: 2px solid var(--border); border-radius: 12px;
-    background: var(--bg); color: var(--text);
-    -moz-appearance: textfield; 
-}
-.time-input::-webkit-outer-spin-button, .time-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-.time-input::placeholder { color: var(--text-muted); opacity: 0.3; }
-.time-input:focus { outline: none; border-color: var(--primary); background: var(--card-bg); }
-.time-separator { font-size: 3rem; font-weight: bold; margin-bottom: 12px; }
-
-.modal-actions { display: flex; gap: 1rem; justify-content: center; }
-.confirm-btn-group { display: flex; flex-direction: column; gap: 10px; width: 100%; }
-.confirm-btn-group button { width: 100%; padding: 1rem; }
 
 /* =========================================
    ESP STATUS ICONS (TOP LEFT)
@@ -476,4 +447,152 @@ input:checked + .slider .label-right { color: var(--text); }
     width: 24px; height: 24px;
     background: var(--primary); border: 2px solid white;
     border-radius: 50%; cursor: grab; z-index: 3; border: none;
+}
+
+#deleteAllBtn {
+    padding: 1rem;       /* Einheitliches Padding wie in den Modals */
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: bold;
+    width: 100%;
+    margin-top: 1rem;
+    cursor: pointer;
+    /* Optional: Border hinzufügen, damit es wie der "Nicht Speichern" Button aussieht */
+    border: 1px solid var(--danger) !important; 
+    background-color: transparent;
+    color: var(--danger);
+    transition: all 0.2s ease;
+}
+
+#deleteAllBtn:hover {
+    background-color: var(--danger);
+    color: white !important;
+}
+
+/* =========================================
+   UNIFIED MODAL STYLES
+   ========================================= */
+
+/* 1. Der Hintergrund (Overlay) */
+.modal-overlay {
+    position: fixed; 
+    top: 0; left: 0; 
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5); 
+    backdrop-filter: blur(4px); /* Der Blur-Effekt */
+    z-index: 2000;
+    
+    /* Flexbox für perfekte Zentrierung */
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+    
+    /* Animation State: Unsichtbar */
+    opacity: 0; 
+    pointer-events: none; 
+    transition: opacity 0.3s ease;
+}
+
+/* Animation State: Sichtbar (wird per JS .active gesetzt) */
+.modal-overlay.active {
+    opacity: 1; 
+    pointer-events: auto;
+}
+
+/* 2. Die Karte (Box) */
+.modal {
+    background: var(--card-bg); 
+    color: var(--text);
+    width: 90%; 
+    max-width: 400px; /* Einheitliche Breite für alle */
+    border-radius: 20px;
+    padding: 2rem;
+    
+    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2);
+    text-align: center; /* Zentrierter Text wie im Original */
+    
+    /* Slide-Up Animation */
+    transform: translateY(20px); 
+    transition: transform 0.3s ease;
+}
+
+/* Wenn Overlay aktiv ist, fährt die Karte hoch */
+.modal-overlay.active .modal {
+    transform: translateY(0);
+}
+
+/* Überschriften */
+.modal h2, .modal h3 {
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+    font-size: 1.5rem;
+    color: var(--text);
+}
+
+/* 3. Spezifische Inhalte (Inputs, Buttons) */
+
+/* Time Inputs (Große Zahlen) */
+.time-input-wrapper { 
+    display: flex; 
+    justify-content: center; 
+    gap: 5px; 
+    margin: 1.5rem 0; 
+    align-items: center; 
+}
+
+.time-input {
+    width: 80px; height: 80px; 
+    font-size: 3rem; 
+    text-align: center;
+    border: 2px solid var(--border); 
+    border-radius: 12px;
+    background: var(--bg); 
+    color: var(--text);
+    font-weight: bold;
+    -moz-appearance: textfield; 
+}
+.time-input::-webkit-outer-spin-button, 
+.time-input::-webkit-inner-spin-button { 
+    -webkit-appearance: none; margin: 0; 
+}
+.time-input:focus { 
+    outline: none; 
+    border-color: var(--primary); 
+    background: var(--card-bg); 
+}
+
+.time-separator { 
+    font-size: 3rem; 
+    font-weight: bold; 
+    margin-bottom: 8px; /* Optische Korrektur */
+}
+
+/* Button Gruppen in Modals */
+.modal-actions { 
+    display: flex; 
+    gap: 1rem; 
+    margin-top: 2rem; 
+}
+.modal-actions button { 
+    flex: 1; 
+    padding: 0.8rem; /* Größere Klickfläche */
+}
+
+.confirm-btn-group { 
+    display: flex; 
+    flex-direction: column; 
+    gap: 10px; 
+    width: 100%; 
+}
+/* Styling für die Buttons im Reset-Modal */
+.confirm-btn-group button {
+    width: 100%;       /* Volle Breite */
+    padding: 1rem;     /* Ordentliches Padding (wie bei den anderen Modals) */
+    border-radius: 12px;
+    font-size: 1rem;
+    cursor: pointer;
+    font-weight: bold;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }

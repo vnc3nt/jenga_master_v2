@@ -94,29 +94,31 @@
 
         </div>
 
-        <div id="timeModal" class="modal">
-            <div class="modal-content">
-                <h2 class="modal-title">Startzeit ändern</h2>
+        <div id="timeModal" class="modal-overlay">
+            <div class="modal">
+                <h2>Startzeit ändern</h2>
                 <div class="time-input-wrapper">
                     <input type="number" id="inputMin" class="time-input" placeholder="05" min="0" max="99">
                     <span class="time-separator">:</span>
                     <input type="number" id="inputSec" class="time-input" placeholder="00" min="0" max="59">
                 </div>
                 <div class="modal-actions">
-                    <button id="modalCancelBtn" class="btn btn-secondary" style="padding: 1rem;">Abbrechen</button>
-                    <button id="modalSaveBtn" class="btn btn-primary" style="padding: 1rem;">Speichern</button>
+                    <button id="modalCancelBtn" class="btn btn-secondary">Abbrechen</button>
+                    <button id="modalSaveBtn" class="btn btn-primary">Speichern</button>
                 </div>
             </div>
         </div>
 
-        <div id="resetModal" class="modal">
-            <div class="modal-content">
-                <h2 class="modal-title">Spiel zurücksetzen</h2>
-                <p style="margin-bottom: 1.5rem; color: var(--text-muted);">Sollen die aktuellen Ergebnisse gespeichert werden?</p>
+        <div id="resetModal" class="modal-overlay">
+            <div class="modal">
+                <h2>Spiel zurücksetzen</h2>
+                <p style="margin-bottom: 2rem; color: var(--text-muted); line-height: 1.5;">
+                    Sollen die aktuellen Ergebnisse in die Rangliste gespeichert werden?
+                </p>
                 <div class="confirm-btn-group">
                     <button id="btnResetSave" class="btn btn-primary">Speichern & Reset</button>
-                    <button id="btnResetNoSave" class="btn btn-reset" style="border-color:var(--danger); color:var(--danger);">Nicht Speichern</button>
-                    <button id="btnResetCancel" class="btn btn-secondary" style="margin-top: 10px;">Abbrechen</button>
+                    <button id="btnResetNoSave" class="btn btn-reset" style="border: 1px solid var(--danger); color: var(--danger); background: transparent;">Nicht Speichern</button>
+                    <button id="btnResetCancel" class="btn btn-secondary">Abbrechen</button>
                 </div>
             </div>
         </div>
@@ -124,32 +126,38 @@
         <div id="editModal" class="modal-overlay">
             <div class="modal">
                 <h3>Eintrag bearbeiten</h3>
-                <div class="modal-content">
-                    <input type="hidden" id="editId">
-                    
-                    <label>Team Name</label>
-                    <input type="text" id="editName" class="robot-name-input" style="width:100%; margin-bottom:1rem; color:var(--text);">
-                    
-                    <label>Steine (Score)</label>
-                    <div class="count-controls" style="margin-bottom:1rem;">
+                
+                <input type="hidden" id="editId">
+                
+                <div style="text-align: left; margin-bottom: 1.5rem;">
+                    <label style="display:block; margin-bottom:0.5rem; font-weight:bold; font-size: 0.9rem;">Team Name</label>
+                    <input type="text" id="editName" class="robot-name-input" style="width:100%; border:1px solid var(--border); padding:10px; border-radius:8px; background: var(--bg);">
+                </div>
+                
+                <div style="text-align: left; margin-bottom: 1.5rem;">
+                    <label style="display:block; margin-bottom:0.5rem; font-weight:bold; font-size: 0.9rem;">Steine (Score)</label>
+                    <div class="count-controls" style="display:flex; gap:10px; align-items:center;">
                         <button class="btn-minus" onclick="adjEditScore(-1)">-</button>
-                        <span id="editScoreDisplay" style="font-size:1.5rem; font-weight:bold; width:50px; text-align:center;">0</span>
+                        <span id="editScoreDisplay" style="font-size:1.8rem; font-weight:bold; flex: 1; text-align:center;">0</span>
                         <button class="btn-plus" onclick="adjEditScore(1)">+</button>
                     </div>
-
-                    <label>Gesamtzeit (Minuten)</label>
-                    <input type="number" id="editTimeMin" class="robot-name-input" style="width:100%; color:var(--text);" placeholder="Minuten">
                 </div>
+
+                <div style="text-align: left;">
+                    <label style="display:block; margin-bottom:0.5rem; font-weight:bold; font-size: 0.9rem;">Gesamtzeit (Minuten)</label>
+                    <input type="number" id="editTimeMin" class="robot-name-input" style="width:100%; border:1px solid var(--border); padding:10px; border-radius:8px; background: var(--bg);" placeholder="Minuten">
+                </div>
+
                 <div class="modal-actions">
                     <button id="btnEditCancel" class="btn btn-secondary">Abbrechen</button>
                     <button id="btnEditSave" class="btn btn-primary">Speichern</button>
                 </div>
-                <div style="margin-top:1rem; text-align:center;">
-                    <button id="btnEditDelete" class="btn" style="color:var(--danger); background:none; border:none; text-decoration:underline;">Eintrag löschen</button>
+                
+                <div style="margin-top:1.5rem;">
+                    <button id="btnEditDelete" class="btn" style="color:var(--danger); background:none; width: auto; margin: 0 auto; font-size: 0.9rem; opacity: 0.8;">Eintrag löschen</button>
                 </div>
             </div>
         </div>
-
     </div>
     <script src="main.js"></script>
 </body>
