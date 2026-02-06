@@ -17,8 +17,8 @@
     const gpio_num_t PAUSE_LED_PIN = GPIO_NUM_3;
     const gpio_num_t CONNECTION_LED_PIN = GPIO_NUM_2;
     
-    const gpio_num_t ROBOT_PIN_1 = GPIO_NUM_14;
-    const gpio_num_t ROBOT_PIN_2 = GPIO_NUM_13;
+    const gpio_num_t ROBOT_PIN_1 = GPIO_NUM_13;
+    const gpio_num_t ROBOT_PIN_2 = GPIO_NUM_15;
     const gpio_num_t PAUSE_PIN = GPIO_NUM_5;
 
     extern SemaphoreHandle_t game_mutex;
