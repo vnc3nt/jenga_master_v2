@@ -39,9 +39,9 @@ void setup_network() {
         wifi_config_t wifi_config = {};
         strcpy((char*)wifi_config.ap.ssid, "JengaMaster");
         wifi_config.ap.ssid_len = strlen("JengaMaster");
-        strcpy((char*)wifi_config.ap.password, ""); // Offenes WLAN
+        strcpy((char*)wifi_config.ap.password, "Weihnachtsbaum");
         wifi_config.ap.max_connection = 10;
-        wifi_config.ap.authmode = WIFI_AUTH_OPEN;
+        wifi_config.ap.authmode = WIFI_AUTH_WPA_WPA2_PSK;
 
         ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
         ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &wifi_config));
@@ -60,7 +60,7 @@ void setup_network() {
 
         wifi_config_t wifi_config = {};
         strcpy((char*)wifi_config.sta.ssid, "JengaMaster");
-        strcpy((char*)wifi_config.sta.password, "");
+        strcpy((char*)wifi_config.sta.password, "Weihnachtsbaum");
         
         ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
         ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
